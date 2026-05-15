@@ -1,3 +1,4 @@
+import Inventory from './pages/admin/Inventory';
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
 import Login from './Login';
@@ -26,7 +27,7 @@ function AdminApp({ user, token, logout }) {
     switch (activePage) {
       case 'dashboard': return <AdminDashboard token={token}/>;
       case 'sales': return <AdminSales token={token}/>;
-      case 'inventory': return <ComingSoon page="Inventory Management"/>;
+      case 'inventory': return <Inventory token={token}/>;
       case 'users': return <ComingSoon page="User Management"/>;
       case 'analytics': return <ComingSoon page="Advanced Analytics"/>;
       case 'forecasting': return <ComingSoon page="Forecasting & Predictive Analytics"/>;
