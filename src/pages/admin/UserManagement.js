@@ -1,0 +1,428 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+
+const API = 'https://malawi-sales-backend.onrender.com';
+
+export default function UserManagement({ token }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [editUser, setEditUser] = useState(null);
+  const [passwordUser, setPasswordUser] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [form, setForm] = useState({
+    name: '', email: '', password: '',
+    role: 'salesperson', region: 'Lilongwe'
+  });
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API}/api/users`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      setUsers(res.data.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const h = { headers: { Authorization: `Bearer ${token}` } };
+      if (editUser) {
+        await axios.put(`${API}/api/users/${editUser.id}`, {
+          name: form.name, role: form.role,
+          region: form.region, active: true
+        }, h);
+        setSuccessMsg('User updated successfully!');
+      } else {
+        await axios.post(`${API}/api/users`, form, h);
+        setSuccessMsg('User added successfully!');
+      }
+      setForm({ name: '', email: '', password: '',
+                role: 'salesperson', region: 'Lilongwe' });
+      setShowForm(false);
+      setEditUser(null);
+      fetchUsers();
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await axios.put(`${API}/api/users/${passwordUser.id}/password`,
+        { password: newPassword },
+        { headers: { Authorization: `Bearer ${token}` } });
+      setSuccessMsg('Password reset successfully!');
+      setShowPasswordForm(false);
+      setPasswordUser(null);
+      setNewPassword('');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (user) => {
+    setEditUser(user);
+    setForm({
+      name: user.name, email: user.email,
+      password: '', role: user.role, region: user.region
+    });
+    setShowForm(true);
+    setShowPasswordForm(false);
+  };
+
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Delete user ${name}?`)) return;
+    try {
+      await axios.delete(`${API}/api/users/${id}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      setSuccessMsg('User deleted!');
+      fetchUsers();
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const getRoleBadge = (role) => {
+    if (role === 'admin') return { bg: '#FFF3E0', color: '#E65100' };
+    if (role === 'salesperson') return { bg: '#E8F5E9', color: '#2E7D32' };
+    return { bg: '#E3F2FD', color: '#1565C0' };
+  };
+
+  const totalAdmin = users.filter(u => u.role === 'admin').length;
+  const totalSales = users.filter(u => u.role === 'salesperson').length;
+  const totalViewer = users.filter(u => u.role === 'viewer').length;
+
+  return (
+    <div style={{ fontFamily: 'Arial' }}>
+
+      {/* Title */}
+      <div style={{ display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'flex-start', marginBottom: 24 }}>
+        <div>
+          <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
+            User Management
+          </h2>
+          <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
+            Manage system users, roles and access permissions
+          </p>
+        </div>
+        <button onClick={() => {
+          setShowForm(!showForm); setEditUser(null);
+          setShowPasswordForm(false);
+          setForm({ name: '', email: '', password: '',
+                    role: 'salesperson', region: 'Lilongwe' });
+        }}
+          style={{ background: '#FF6B35', border: 'none', color: 'white',
+                   padding: '10px 20px', borderRadius: 8, cursor: 'pointer',
+                   fontWeight: 'bold', fontSize: 14 }}>
+          + Add User
+        </button>
+      </div>
+
+      {/* Success */}
+      {successMsg && (
+        <div style={{ background: '#E8F5E9', border: '1px solid #A5D6A7',
+                      borderRadius: 8, padding: '12px 16px', marginBottom: 20,
+                      color: '#2E7D32', fontWeight: 'bold' }}>
+          ✓ {successMsg}
+        </div>
+      )}
+
+      {/* Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 16, marginBottom: 24 }}>
+        {[
+          { label: 'Total Users', value: users.length, color: '#FF6B35' },
+          { label: 'Admins', value: totalAdmin, color: '#E65100' },
+          { label: 'Salespersons', value: totalSales, color: '#2D6A4F' },
+          { label: 'Viewers', value: totalViewer, color: '#457B9D' },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ background: 'white', borderRadius: 12,
+            padding: 20, borderLeft: `4px solid ${color}`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>{label}</div>
+            <div style={{ color: '#3E1F00', fontSize: 24,
+                          fontWeight: 'bold' }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Add/Edit Form */}
+      {showForm && (
+        <div style={{ background: 'white', borderRadius: 12, padding: 24,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 24 }}>
+          <h3 style={{ color: '#3E1F00', marginTop: 0 }}>
+            {editUser ? `Edit User — ${editUser.name}` : 'Add New User'}
+          </h3>
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'grid',
+                          gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
+                                display: 'block', marginBottom: 6 }}>
+                  Full Name *
+                </label>
+                <input type="text" required value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g. Tadala Banda"
+                  style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
+                           border: '1.5px solid #FFB800', fontSize: 13,
+                           boxSizing: 'border-box' }}/>
+              </div>
+              {!editUser && (
+                <div>
+                  <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
+                                  display: 'block', marginBottom: 6 }}>
+                    Email Address *
+                  </label>
+                  <input type="email" required value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="e.g. tadala@sabias.com"
+                    style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
+                             border: '1.5px solid #FFB800', fontSize: 13,
+                             boxSizing: 'border-box' }}/>
+                </div>
+              )}
+              {!editUser && (
+                <div>
+                  <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
+                                  display: 'block', marginBottom: 6 }}>
+                    Password *
+                  </label>
+                  <input type="password" required value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    placeholder="Enter password"
+                    style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
+                             border: '1.5px solid #FFB800', fontSize: 13,
+                             boxSizing: 'border-box' }}/>
+                </div>
+              )}
+              <div>
+                <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
+                                display: 'block', marginBottom: 6 }}>
+                  Role *
+                </label>
+                <select required value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
+                           border: '1.5px solid #FFB800', fontSize: 13,
+                           boxSizing: 'border-box' }}>
+                  <option value="admin">Admin</option>
+                  <option value="salesperson">Salesperson</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
+                                display: 'block', marginBottom: 6 }}>
+                  Region *
+                </label>
+                <select required value={form.region}
+                  onChange={(e) => setForm({ ...form, region: e.target.value })}
+                  style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
+                           border: '1.5px solid #FFB800', fontSize: 13,
+                           boxSizing: 'border-box' }}>
+                  <option value="all">All Regions</option>
+                  <option value="Lilongwe">Lilongwe</option>
+                  <option value="Blantyre">Blantyre</option>
+                  <option value="Mzuzu">Mzuzu</option>
+                  <option value="Kasungu">Kasungu</option>
+                  <option value="Zomba">Zomba</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+              <button type="submit" disabled={submitting}
+                style={{ background: '#FF6B35', border: 'none', color: 'white',
+                         padding: '10px 28px', borderRadius: 8, cursor: 'pointer',
+                         fontWeight: 'bold', fontSize: 14 }}>
+                {submitting ? 'Saving...' : editUser ? 'Update User' : 'Add User'}
+              </button>
+              <button type="button"
+                onClick={() => { setShowForm(false); setEditUser(null); }}
+                style={{ background: '#3E1F00', border: 'none', color: '#FFB800',
+                         padding: '10px 28px', borderRadius: 8, cursor: 'pointer',
+                         fontWeight: 'bold', fontSize: 14 }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Password Reset Form */}
+      {showPasswordForm && passwordUser && (
+        <div style={{ background: 'white', borderRadius: 12, padding: 24,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 24,
+                      border: '2px solid #FFB800' }}>
+          <h3 style={{ color: '#3E1F00', marginTop: 0 }}>
+            Reset Password — {passwordUser.name}
+          </h3>
+          <form onSubmit={handlePasswordReset}>
+            <div style={{ maxWidth: 300 }}>
+              <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
+                              display: 'block', marginBottom: 6 }}>
+                New Password *
+              </label>
+              <input type="password" required value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
+                         border: '1.5px solid #FFB800', fontSize: 13,
+                         boxSizing: 'border-box', marginBottom: 14 }}/>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="submit" disabled={submitting}
+                style={{ background: '#FF6B35', border: 'none', color: 'white',
+                         padding: '10px 28px', borderRadius: 8, cursor: 'pointer',
+                         fontWeight: 'bold' }}>
+                {submitting ? 'Resetting...' : 'Reset Password'}
+              </button>
+              <button type="button"
+                onClick={() => { setShowPasswordForm(false); setPasswordUser(null); }}
+                style={{ background: '#3E1F00', border: 'none', color: '#FFB800',
+                         padding: '10px 28px', borderRadius: 8, cursor: 'pointer',
+                         fontWeight: 'bold' }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Users Table */}
+      <div style={{ background: 'white', borderRadius: 12, padding: 20,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 15 }}>
+            System Users ({users.length})
+          </div>
+          <button onClick={fetchUsers}
+            style={{ padding: '8px 16px', background: '#FF6B35', border: 'none',
+                     borderRadius: 8, color: 'white', cursor: 'pointer', fontSize: 13 }}>
+            Refresh
+          </button>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>
+            Loading users...
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#3E1F00' }}>
+                  {['Name','Email','Role','Region','Status',
+                    'Created','Actions'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', color: '#FFB800',
+                      textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user, i) => {
+                  const roleBadge = getRoleBadge(user.role);
+                  return (
+                    <tr key={user.id} style={{
+                      background: i % 2 === 0 ? '#FFF8F0' : 'white',
+                      borderBottom: '1px solid #FFE8D0' }}>
+                      <td style={{ padding: '10px 12px', fontWeight: '600',
+                                   color: '#3E1F00' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%',
+                                        background: '#FF6B35', color: 'white',
+                                        display: 'flex', alignItems: 'center',
+                                        justifyContent: 'center', fontWeight: 'bold',
+                                        fontSize: 13 }}>
+                            {user.name?.charAt(0).toUpperCase()}
+                          </div>
+                          {user.name}
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 12px', color: '#888' }}>
+                        {user.email}
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{ background: roleBadge.bg,
+                                       color: roleBadge.color,
+                                       padding: '3px 10px', borderRadius: 10,
+                                       fontSize: 11, fontWeight: 'bold',
+                                       textTransform: 'capitalize' }}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>{user.region}</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{
+                          background: user.active ? '#E8F5E9' : '#FFEBEE',
+                          color: user.active ? '#2E7D32' : '#C62828',
+                          padding: '3px 10px', borderRadius: 10, fontSize: 11,
+                          fontWeight: 'bold' }}>
+                          {user.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 12px', color: '#888' }}>
+                        {user.created_at?.split('T')[0]}
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          <button onClick={() => handleEdit(user)}
+                            style={{ background: '#FFB800', border: 'none',
+                                     color: '#3E1F00', padding: '4px 8px',
+                                     borderRadius: 5, cursor: 'pointer',
+                                     fontSize: 11, fontWeight: 'bold' }}>
+                            Edit
+                          </button>
+                          <button onClick={() => {
+                            setPasswordUser(user);
+                            setShowPasswordForm(true);
+                            setShowForm(false); }}
+                            style={{ background: '#E3F2FD', border: 'none',
+                                     color: '#1565C0', padding: '4px 8px',
+                                     borderRadius: 5, cursor: 'pointer',
+                                     fontSize: 11, fontWeight: 'bold' }}>
+                            Password
+                          </button>
+                          <button onClick={() => handleDelete(user.id, user.name)}
+                            style={{ background: '#FFEBEE', border: 'none',
+                                     color: '#C62828', padding: '4px 8px',
+                                     borderRadius: 5, cursor: 'pointer',
+                                     fontSize: 11, fontWeight: 'bold' }}>
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

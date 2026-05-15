@@ -1,3 +1,5 @@
+
+import UserManagement from './pages/admin/UserManagement';
 import Inventory from './pages/admin/Inventory';
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
@@ -28,7 +30,7 @@ function AdminApp({ user, token, logout }) {
       case 'dashboard': return <AdminDashboard token={token}/>;
       case 'sales': return <AdminSales token={token}/>;
       case 'inventory': return <Inventory token={token}/>;
-      case 'users': return <ComingSoon page="User Management"/>;
+      case 'users': return <UserManagement token={token}/>;
       case 'analytics': return <ComingSoon page="Advanced Analytics"/>;
       case 'forecasting': return <ComingSoon page="Forecasting & Predictive Analytics"/>;
       case 'reports': return <ComingSoon page="Reports & Exports"/>;
