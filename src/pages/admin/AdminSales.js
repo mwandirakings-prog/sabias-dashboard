@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const API = 'https://malawi-sales-backend.onrender.com';
@@ -18,9 +18,7 @@ export default function AdminSales({ token }) {
 
   const fmt = (n) => new Intl.NumberFormat('en-US').format(Math.round(n || 0));
 
-  useEffect(() => { fetchSales(); }, []);
-
-  const fetchSales = async () => {
+  const fetchSales = useCallback(async () => {
     try {
       const res = await axios.get(`${API}/api/sales`,
         { headers: { Authorization: `Bearer ${token}` } });
@@ -30,7 +28,9 @@ export default function AdminSales({ token }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => { fetchSales(); }, [fetchSales]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -155,10 +155,17 @@ export default function AdminSales({ token }) {
           <div style={{ color: '#3E1F00', fontWeight: 'bold' }}>
             All Transactions ({filtered.length})
           </div>
-          <input placeholder="Search..."
-            value={search} onChange={(e) => setSearch(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #FFB800',
-                     fontSize: 13, width: 220 }}/>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input placeholder="Search..."
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #FFB800',
+                       fontSize: 13, width: 220 }}/>
+            <button onClick={fetchSales}
+              style={{ padding: '8px 16px', background: '#FF6B35', border: 'none',
+                       borderRadius: 8, color: 'white', cursor: 'pointer', fontSize: 13 }}>
+              Refresh
+            </button>
+          </div>
         </div>
 
         {loading ? (
