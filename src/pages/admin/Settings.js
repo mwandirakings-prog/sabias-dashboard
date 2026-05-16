@@ -10,7 +10,6 @@ export default function Settings({ user, token }) {
   const [passwords, setPasswords] = useState({
     current: '', newPass: '', confirm: ''
   });
-  const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState({
     lowStock: true, newSales: true, system: true, email: false
   });
