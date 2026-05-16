@@ -1,3 +1,4 @@
+import Forecasting from './pages/admin/Forecasting';
 import Analytics from './pages/admin/Analytics';
 import UserManagement from './pages/admin/UserManagement';
 import Inventory from './pages/admin/Inventory';
@@ -32,7 +33,7 @@ function AdminApp({ user, token, logout }) {
       case 'inventory': return <Inventory token={token}/>;
       case 'users': return <UserManagement token={token}/>;
       case 'analytics': return <Analytics token={token}/>;
-      case 'forecasting': return <ComingSoon page="Forecasting & Predictive Analytics"/>;
+      case 'forecasting': return <Forecasting token={token}/>;
       case 'reports': return <ComingSoon page="Reports & Exports"/>;
       case 'notifications': return <ComingSoon page="Notifications"/>;
       case 'settings': return <ComingSoon page="Settings"/>;
