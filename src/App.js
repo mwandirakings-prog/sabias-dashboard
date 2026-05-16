@@ -1,3 +1,4 @@
+import ViewerForecasting from './pages/viewer/ViewerForecasting';
 import ViewerReports from './pages/viewer/ViewerReports';
 import ViewerInventory from './pages/viewer/ViewerInventory';
 import ViewerProfile from './pages/viewer/ViewerProfile';
@@ -121,7 +122,7 @@ function ViewerApp({ user, token, logout }) {
       case 'dashboard': return <ViewerDashboard token={token} user={user}/>;
       case 'analytics': return <ViewerDashboard token={token} user={user}/>;
       case 'reports': return <ViewerReports token={token}/>;
-      case 'forecasting': return <ComingSoon page="Forecasting & Analytics"/>;
+      case 'forecasting': return <ViewerForecasting token={token}/>;
       case 'inventory': return <ViewerInventory token={token}/>;
       case 'notifications': return <ViewerNotifications token={token} user={user}/>;
       case 'profile': return <ViewerProfile token={token} user={user}/>;
