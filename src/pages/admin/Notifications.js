@@ -29,11 +29,9 @@ export default function Notifications({ token }) {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Generate notifications from data
   const generateNotifications = () => {
     const notifications = [];
 
-    // Low stock alerts
     inventory.forEach(item => {
       if (item.quantity_in_stock === 0) {
         notifications.push({
@@ -41,8 +39,7 @@ export default function Notifications({ token }) {
           type: 'danger',
           icon: '🚨',
           title: 'Out of Stock',
-          message: `${item.product} is completely out of stock!
-                    Reorder from ${item.supplier} immediately.`,
+          message: `${item.product} is completely out of stock! Reorder from ${item.supplier} immediately.`,
           time: 'Stock Alert',
           category: 'Inventory',
         });
@@ -52,39 +49,32 @@ export default function Notifications({ token }) {
           type: 'warning',
           icon: '⚠️',
           title: 'Low Stock Alert',
-          message: `${item.product} has only ${item.quantity_in_stock} 
-                    units left. Reorder level is ${item.reorder_level}.`,
+          message: `${item.product} has only ${item.quantity_in_stock} units left. Reorder level is ${item.reorder_level}.`,
           time: 'Stock Alert',
           category: 'Inventory',
         });
       }
     });
 
-    // Recent sales notifications
     const recentSales = sales.slice(0, 5);
-    recentSales.forEach((s, i) => {
+    recentSales.forEach((s) => {
       notifications.push({
         id: `sale-${s.id}`,
         type: 'success',
         icon: '💰',
         title: 'New Sale Recorded',
-        message: `${s.salesperson} recorded a sale of ${s.product} 
-                  worth MK ${new Intl.NumberFormat('en-US')
-                  .format(Math.round(s.revenue || 0))} 
-                  in ${s.region}.`,
+        message: `${s.salesperson} recorded a sale of ${s.product} worth MK ${new Intl.NumberFormat('en-US').format(Math.round(s.revenue || 0))} in ${s.region}.`,
         time: s.sale_date?.split('T')[0],
         category: 'Sales',
       });
     });
 
-    // System notifications
     notifications.push({
       id: 'sys-1',
       type: 'info',
       icon: '📊',
       title: 'Analytics Updated',
-      message: 'Your sales analytics and forecasting data 
-                has been refreshed with the latest transactions.',
+      message: 'Your sales analytics and forecasting data has been refreshed with the latest transactions.',
       time: 'System',
       category: 'System',
     });
@@ -94,8 +84,7 @@ export default function Notifications({ token }) {
       type: 'info',
       icon: '🔒',
       title: 'Security Notice',
-      message: 'Your SABIAS system is secure and all data 
-                is encrypted and backed up on Neon cloud.',
+      message: 'Your SABIAS system is secure and all data is encrypted and backed up on Neon cloud.',
       time: 'System',
       category: 'System',
     });
@@ -105,8 +94,7 @@ export default function Notifications({ token }) {
       type: 'success',
       icon: '✅',
       title: 'System Running',
-      message: 'SABIAS is fully operational. 
-                Backend API on Render and database on Neon are healthy.',
+      message: 'SABIAS is fully operational. Backend API on Render and database on Neon are healthy.',
       time: 'System',
       category: 'System',
     });
@@ -132,20 +120,15 @@ export default function Notifications({ token }) {
 
   const getTypeStyle = (type) => {
     switch (type) {
-      case 'danger': return { bg: '#FFEBEE', border: '#FFCDD2',
-                               color: '#C62828', dot: '#E53935' };
-      case 'warning': return { bg: '#FFF8E1', border: '#FFE082',
-                                color: '#E65100', dot: '#FF8F00' };
-      case 'success': return { bg: '#E8F5E9', border: '#A5D6A7',
-                                color: '#2E7D32', dot: '#43A047' };
-      default: return { bg: '#E3F2FD', border: '#90CAF9',
-                         color: '#1565C0', dot: '#1E88E5' };
+      case 'danger': return { bg: '#FFEBEE', border: '#FFCDD2', color: '#C62828', dot: '#E53935' };
+      case 'warning': return { bg: '#FFF8E1', border: '#FFE082', color: '#E65100', dot: '#FF8F00' };
+      case 'success': return { bg: '#E8F5E9', border: '#A5D6A7', color: '#2E7D32', dot: '#43A047' };
+      default: return { bg: '#E3F2FD', border: '#90CAF9', color: '#1565C0', dot: '#1E88E5' };
     }
   };
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 80,
-                  color: '#3E1F00', fontSize: 18 }}>
+    <div style={{ textAlign: 'center', padding: 80, color: '#3E1F00', fontSize: 18 }}>
       Loading Notifications...
     </div>
   );
@@ -153,7 +136,6 @@ export default function Notifications({ token }) {
   return (
     <div style={{ fontFamily: 'Arial' }}>
 
-      {/* Title */}
       <div style={{ display: 'flex', justifyContent: 'space-between',
                     alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
@@ -188,31 +170,23 @@ export default function Notifications({ token }) {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Total Notifications', value: allNotifications.length,
-            color: '#FF6B35' },
+          { label: 'Total Notifications', value: allNotifications.length, color: '#FF6B35' },
           { label: 'Unread', value: unreadCount, color: '#E63946' },
-          { label: 'Stock Alerts', value: allNotifications
-              .filter(n => n.category === 'Inventory').length, color: '#FFB800' },
-          { label: 'Sales Alerts', value: allNotifications
-              .filter(n => n.category === 'Sales').length, color: '#2D6A4F' },
+          { label: 'Stock Alerts', value: allNotifications.filter(n => n.category === 'Inventory').length, color: '#FFB800' },
+          { label: 'Sales Alerts', value: allNotifications.filter(n => n.category === 'Sales').length, color: '#2D6A4F' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: 'white', borderRadius: 12,
             padding: 20, borderLeft: `4px solid ${color}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
-              {label}
-            </div>
-            <div style={{ color: '#3E1F00', fontSize: 24,
-                          fontWeight: 'bold' }}>{value}</div>
+            <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>{label}</div>
+            <div style={{ color: '#3E1F00', fontSize: 24, fontWeight: 'bold' }}>{value}</div>
           </div>
         ))}
       </div>
 
-      {/* Filter Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {['All', 'Inventory', 'Sales', 'System'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
@@ -224,17 +198,15 @@ export default function Notifications({ token }) {
               boxShadow: filter === f ? '0 2px 8px rgba(0,0,0,0.15)' : 'none'
             }}>
             {f}
-            <span style={{ marginLeft: 6, background: filter === f
-              ? '#FF6B35' : '#FFE8D0', color: filter === f ? 'white' : '#888',
-              padding: '1px 6px', borderRadius: 10, fontSize: 11 }}>
-              {f === 'All' ? allNotifications.length
-                : allNotifications.filter(n => n.category === f).length}
+            <span style={{ marginLeft: 6, background: filter === f ? '#FF6B35' : '#FFE8D0',
+                           color: filter === f ? 'white' : '#888',
+                           padding: '1px 6px', borderRadius: 10, fontSize: 11 }}>
+              {f === 'All' ? allNotifications.length : allNotifications.filter(n => n.category === f).length}
             </span>
           </button>
         ))}
       </div>
 
-      {/* Notifications List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {filtered.length === 0 ? (
           <div style={{ background: 'white', borderRadius: 12, padding: 60,
@@ -247,8 +219,7 @@ export default function Notifications({ token }) {
             const style = getTypeStyle(n.type);
             const isRead = readIds.includes(n.id);
             return (
-              <div key={n.id}
-                onClick={() => markRead(n.id)}
+              <div key={n.id} onClick={() => markRead(n.id)}
                 style={{
                   background: isRead ? 'white' : style.bg,
                   border: `1px solid ${isRead ? '#FFE8D0' : style.border}`,
@@ -260,8 +231,9 @@ export default function Notifications({ token }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between',
                               alignItems: 'flex-start' }}>
                   <div style={{ display: 'flex', gap: 12, flex: 1 }}>
-                    <div style={{ fontSize: 24, minWidth: 36,
-                                  textAlign: 'center' }}>{n.icon}</div>
+                    <div style={{ fontSize: 24, minWidth: 36, textAlign: 'center' }}>
+                      {n.icon}
+                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center',
                                     gap: 8, marginBottom: 4 }}>
@@ -278,8 +250,9 @@ export default function Notifications({ token }) {
                           {n.category}
                         </span>
                       </div>
-                      <div style={{ color: '#555', fontSize: 13,
-                                    lineHeight: 1.5 }}>{n.message}</div>
+                      <div style={{ color: '#555', fontSize: 13, lineHeight: 1.5 }}>
+                        {n.message}
+                      </div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column',
