@@ -41,7 +41,6 @@ export default function ViewerReports({ token }) {
 
   const totalRevenue = filteredSales.reduce((sum, s) => sum + parseFloat(s.revenue || 0), 0);
   const totalProfit = filteredSales.reduce((sum, s) => sum + parseFloat(s.profit || 0), 0);
-  const totalUnits = filteredSales.reduce((sum, s) => sum + parseInt(s.quantity || 0), 0);
   const margin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
 
   if (loading) return (
