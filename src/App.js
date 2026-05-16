@@ -1,3 +1,4 @@
+import Settings from './pages/admin/Settings';
 import Notifications from './pages/admin/Notifications';
 import Reports from './pages/admin/Reports';
 import Forecasting from './pages/admin/Forecasting';
@@ -38,7 +39,7 @@ function AdminApp({ user, token, logout }) {
       case 'forecasting': return <Forecasting token={token}/>;
       case 'reports': return <Reports token={token}/>;
       case 'notifications': return <Notifications token={token}/>;
-      case 'settings': return <ComingSoon page="Settings"/>;
+      case 'settings': return <Settings user={user} token={token}/>;
       default: return <AdminDashboard token={token}/>;
     }
   };
