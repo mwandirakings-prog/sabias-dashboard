@@ -1,3 +1,4 @@
+import Profile from './pages/salesperson/Profile';
 import SalespersonNotifications from './pages/salesperson/SalespersonNotifications';
 import Settings from './pages/admin/Settings';
 import Notifications from './pages/admin/Notifications';
@@ -79,7 +80,7 @@ function SalespersonApp({ user, token, logout }) {
       case 'mysales': return <MySales token={token} user={user}/>;
       case 'products': return <Products token={token}/>;
       case 'notifications': return <SalespersonNotifications token={token} user={user}/>;
-      case 'profile': return <ComingSoon page="Profile"/>;
+      case 'profile': return <Profile token={token} user={user}/>;
       default: return <SalespersonDashboard token={token} user={user}/>;
     }
   };
