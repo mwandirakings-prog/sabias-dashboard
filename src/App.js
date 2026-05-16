@@ -24,6 +24,7 @@ import MySales from './pages/salesperson/MySales';
 import Products from './pages/salesperson/Products';
 import ViewerDashboard from './pages/viewer/ViewerDashboard';
 
+/* eslint-disable no-unused-vars */
 const ComingSoon = ({ page }) => (
   <div style={{ textAlign: 'center', padding: 80 }}>
     <div style={{ fontSize: 48, marginBottom: 16 }}>🚧</div>
