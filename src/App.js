@@ -1,3 +1,4 @@
+import ViewerInventory from './pages/viewer/ViewerInventory';
 import ViewerProfile from './pages/viewer/ViewerProfile';
 import ViewerNotifications from './pages/viewer/ViewerNotifications';
 import Profile from './pages/salesperson/Profile';
@@ -120,7 +121,7 @@ function ViewerApp({ user, token, logout }) {
       case 'analytics': return <ViewerDashboard token={token} user={user}/>;
       case 'reports': return <ComingSoon page="Reports & Exports"/>;
       case 'forecasting': return <ComingSoon page="Forecasting & Analytics"/>;
-      case 'inventory': return <ComingSoon page="Inventory View"/>;
+      case 'inventory': return <ViewerInventory token={token}/>;
       case 'notifications': return <ViewerNotifications token={token} user={user}/>;
       case 'profile': return <ViewerProfile token={token} user={user}/>;
       default: return <ViewerDashboard token={token} user={user}/>;
