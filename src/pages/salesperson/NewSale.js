@@ -35,11 +35,12 @@ export default function NewSale({ token, user }) {
     setErrorMsg('');
     try {
       await axios.post(`${API}/api/sales`, {
-        ...form,
-        quantity: parseInt(form.quantity),
-        unit_price: parseFloat(form.unit_price),
-        unit_cost: parseFloat(form.unit_cost),
-      }, { headers: { Authorization: `Bearer ${token}` } });
+  ...form,
+  quantity: parseInt(form.quantity),
+  unit_price: parseFloat(form.unit_price),
+  unit_cost: parseFloat(form.unit_cost),
+  company_id: user?.company_id,
+}, { headers: { Authorization: `Bearer ${token}` } });
       setSuccessMsg(`Sale recorded! Revenue: MK ${fmt(revenue)} · Profit: MK ${fmt(profit)}`);
       setForm({
         sale_date: new Date().toISOString().split('T')[0],
