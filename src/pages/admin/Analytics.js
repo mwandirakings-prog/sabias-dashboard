@@ -12,12 +12,13 @@ const API = 'https://malawi-sales-backend.onrender.com';
 const COLORS = ['#FF6B35','#FFB800','#2D6A4F','#3E1F00','#E63946',
                 '#457B9D','#9B5DE5','#F72585','#4CC9F0','#7B2D8B'];
 
-export default function Analytics({ token }) {
+export default function Analytics({ token, user }) {
   const [sales, setSales] = useState([]);
   const [monthly, setMonthly] = useState([]);
   const [regions, setRegions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [productFilter, setProductFilter] = useState('Top 5');
 
   const fmt = (n) => new Intl.NumberFormat('en-US').format(Math.round(n || 0));
 
@@ -25,11 +26,12 @@ export default function Analytics({ token }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
+      const cid = user?.company_id;
       const [s, m, r, c] = await Promise.all([
-        axios.get(`${API}/api/sales`, h),
-        axios.get(`${API}/api/monthly`, h),
-        axios.get(`${API}/api/regions`, h),
-        axios.get(`${API}/api/categories`, h),
+        axios.get(`${API}/api/sales?company_id=${cid}`, h),
+        axios.get(`${API}/api/monthly?company_id=${cid}`, h),
+        axios.get(`${API}/api/regions?company_id=${cid}`, h),
+        axios.get(`${API}/api/categories?company_id=${cid}`, h),
       ]);
       setSales(s.data.data);
       setMonthly(m.data.data);
@@ -40,12 +42,12 @@ export default function Analytics({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Top 5 products by revenue
-  const topProducts = sales
+  // All products sorted by revenue
+  const allProducts = sales
     .reduce((acc, s) => {
       const found = acc.find(x => x.name === s.product);
       if (found) {
@@ -62,8 +64,13 @@ export default function Analytics({ token }) {
       }
       return acc;
     }, [])
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5);
+    .sort((a, b) => b.revenue - a.revenue);
+
+  const displayProducts = productFilter === 'Top 5'
+    ? allProducts.slice(0, 5)
+    : productFilter === 'Top 10'
+    ? allProducts.slice(0, 10)
+    : allProducts.slice(-5);
 
   // Salesperson leaderboard
   const salespersonData = sales
@@ -85,7 +92,7 @@ export default function Analytics({ token }) {
     }, [])
     .sort((a, b) => b.revenue - a.revenue);
 
-  // Payment method breakdown
+  // Payment method breakdown including Voucher
   const paymentData = sales
     .reduce((acc, s) => {
       const found = acc.find(x => x.name === s.payment);
@@ -112,7 +119,7 @@ export default function Analytics({ token }) {
     return { ...m, growth: parseFloat(growth) };
   });
 
-  // Radar data for regions
+  // Radar data for branches
   const radarData = regions.map(r => ({
     region: r.region,
     revenue: Math.round(parseFloat(r.revenue || 0) / 1000),
@@ -129,7 +136,6 @@ export default function Analytics({ token }) {
   return (
     <div style={{ fontFamily: 'Arial' }}>
 
-      {/* Title */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
           Advanced Analytics
@@ -207,20 +213,34 @@ export default function Analytics({ token }) {
         </div>
       </div>
 
-      {/* Row 2 — Top Products + Payment Methods */}
+      {/* Row 2 — Products Filter + Payment Methods */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
 
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
-            Top 5 Products
+          <div style={{ display: 'flex', justifyContent: 'space-between',
+                        alignItems: 'center', marginBottom: 4 }}>
+            <div style={{ color: '#3E1F00', fontWeight: 'bold' }}>
+              Products by Revenue
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {['Top 5', 'Top 10', 'Least 5'].map(f => (
+                <button key={f} onClick={() => setProductFilter(f)}
+                  style={{
+                    padding: '3px 8px', borderRadius: 6, border: 'none',
+                    cursor: 'pointer', fontSize: 10, fontWeight: 'bold',
+                    background: productFilter === f ? '#3E1F00' : '#FFF8F0',
+                    color: productFilter === f ? '#FFB800' : '#888',
+                  }}>{f}</button>
+              ))}
+            </div>
           </div>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
-            By total revenue generated
+            {productFilter === 'Least 5' ? 'Lowest' : 'Highest'} revenue products
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={topProducts} layout="vertical"
+            <BarChart data={displayProducts} layout="vertical"
               margin={{ top: 5, right: 20, left: 60, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5"/>
               <XAxis type="number" tick={{ fontSize: 10 }}
@@ -228,7 +248,7 @@ export default function Analytics({ token }) {
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }}/>
               <Tooltip formatter={(v) => [`MK ${fmt(v)}`, 'Revenue']}/>
               <Bar dataKey="revenue" radius={[0,4,4,0]}>
-                {topProducts.map((_, i) => (
+                {displayProducts.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]}/>
                 ))}
               </Bar>
@@ -242,7 +262,7 @@ export default function Analytics({ token }) {
             Payment Method Analysis
           </div>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
-            Revenue by payment type
+            Revenue by payment type including Voucher
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
@@ -266,10 +286,10 @@ export default function Analytics({ token }) {
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
-            Regional Performance Radar
+            Branch Performance Radar
           </div>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
-            Revenue vs Profit by region (MK thousands)
+            Revenue vs Profit by branch (MK thousands)
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <RadarChart data={radarData}>
