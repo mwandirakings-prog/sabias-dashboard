@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
 const API = 'https://malawi-sales-backend.onrender.com';
 
-export default function Reports({ token }) {
+export default function Reports({ token, user }) {
   const [sales, setSales] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,6 +12,7 @@ export default function Reports({ token }) {
   const [filterRegion, setFilterRegion] = useState('All');
   const [filterCategory, setFilterCategory] = useState('All');
   const [exporting, setExporting] = useState('');
+  const printRef = useRef();
 
   const fmt = (n) => new Intl.NumberFormat('en-US').format(Math.round(n || 0));
 
@@ -19,9 +20,10 @@ export default function Reports({ token }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
+      const cid = user?.company_id;
       const [s, inv] = await Promise.all([
-        axios.get(`${API}/api/sales`, h),
-        axios.get(`${API}/api/inventory`, h),
+        axios.get(`${API}/api/sales?company_id=${cid}`, h),
+        axios.get(`${API}/api/inventory?company_id=${cid}`, h),
       ]);
       setSales(s.data.data);
       setInventory(inv.data.data);
@@ -30,11 +32,10 @@ export default function Reports({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Filter sales
   const filteredSales = sales.filter(s => {
     const matchRegion = filterRegion === 'All' || s.region === filterRegion;
     const matchCategory = filterCategory === 'All' || s.category === filterCategory;
@@ -46,13 +47,11 @@ export default function Reports({ token }) {
   const uniqueRegions = ['All', ...new Set(sales.map(s => s.region).filter(Boolean))];
   const uniqueCategories = ['All', ...new Set(sales.map(s => s.category).filter(Boolean))];
 
-  // Summary stats
   const totalRevenue = filteredSales.reduce((sum, s) => sum + parseFloat(s.revenue || 0), 0);
   const totalProfit = filteredSales.reduce((sum, s) => sum + parseFloat(s.profit || 0), 0);
   const totalUnits = filteredSales.reduce((sum, s) => sum + parseInt(s.quantity || 0), 0);
   const margin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
 
-  // Export to CSV
   const exportToCSV = (data, filename, headers, rowFn) => {
     setExporting(filename);
     const csvRows = [headers.join(',')];
@@ -105,6 +104,7 @@ export default function Reports({ token }) {
   const exportSummaryCSV = () => {
     const summaryData = [
       { label: 'Report Generated', value: new Date().toLocaleString() },
+      { label: 'Company', value: user?.company || 'SABIAS' },
       { label: 'Total Transactions', value: filteredSales.length },
       { label: 'Total Revenue', value: `MK ${fmt(totalRevenue)}` },
       { label: 'Total Profit', value: `MK ${fmt(totalProfit)}` },
@@ -123,8 +123,66 @@ export default function Reports({ token }) {
     );
   };
 
+  // Print only the report preview table
   const printReport = () => {
-    window.print();
+    const printContent = printRef.current.innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>SABIAS Report — ${user?.company || 'Sales Report'}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h2 { color: #3E1F00; }
+            .meta { color: #888; font-size: 12px; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th { background: #3E1F00; color: #FFB800; padding: 8px 10px;
+                 text-align: left; }
+            td { padding: 7px 10px; border-bottom: 1px solid #FFE8D0; }
+            tr:nth-child(even) { background: #FFF8F0; }
+            .summary { display: flex; gap: 20px; margin-bottom: 20px; }
+            .kpi { border-left: 4px solid #FF6B35; padding: 10px 14px;
+                   background: #FFF8F0; border-radius: 6px; }
+            .kpi-label { font-size: 11px; color: #888; }
+            .kpi-value { font-size: 16px; font-weight: bold; color: #3E1F00; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <h2>SABIAS Sales Report — ${user?.company || ''}</h2>
+          <div class="meta">
+            Generated: ${new Date().toLocaleString()} |
+            Period: ${dateFrom || 'All time'} to ${dateTo || 'Present'} |
+            Region: ${filterRegion} | Category: ${filterCategory}
+          </div>
+          <div class="summary">
+            <div class="kpi">
+              <div class="kpi-label">Transactions</div>
+              <div class="kpi-value">${filteredSales.length}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Total Revenue</div>
+              <div class="kpi-value">MK ${fmt(totalRevenue)}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Total Profit</div>
+              <div class="kpi-value">MK ${fmt(totalProfit)}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Profit Margin</div>
+              <div class="kpi-value">${margin}%</div>
+            </div>
+          </div>
+          ${printContent}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   if (loading) return (
@@ -136,13 +194,13 @@ export default function Reports({ token }) {
   return (
     <div style={{ fontFamily: 'Arial' }}>
 
-      {/* Title */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
           Reports & Export
         </h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-          Generate and export business reports in CSV format
+          Generate and export business reports for{' '}
+          <strong style={{ color: '#FF6B35' }}>{user?.company || 'Your Company'}</strong>
         </p>
       </div>
 
@@ -175,7 +233,7 @@ export default function Reports({ token }) {
           </div>
           <div>
             <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                            display: 'block', marginBottom: 6 }}>Region</label>
+                            display: 'block', marginBottom: 6 }}>Branch</label>
             <select value={filterRegion}
               onChange={(e) => setFilterRegion(e.target.value)}
               style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
@@ -229,21 +287,15 @@ export default function Reports({ token }) {
       {/* Export Buttons */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 16, marginBottom: 20 }}>
-
-        {/* Sales Report */}
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                      textAlign: 'center' }}>
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
           <div style={{ color: '#3E1F00', fontWeight: 'bold',
-                        fontSize: 16, marginBottom: 8 }}>
-            Sales Report
-          </div>
+                        fontSize: 16, marginBottom: 8 }}>Sales Report</div>
           <div style={{ color: '#888', fontSize: 12, marginBottom: 16 }}>
-            Export {filteredSales.length} transactions with full details
+            Export {filteredSales.length} transactions
           </div>
-          <button onClick={exportSalesCSV}
-            disabled={exporting !== ''}
+          <button onClick={exportSalesCSV} disabled={exporting !== ''}
             style={{ background: '#FF6B35', border: 'none', color: 'white',
                      padding: '12px 24px', borderRadius: 8, cursor: 'pointer',
                      fontWeight: 'bold', fontSize: 14, width: '100%' }}>
@@ -251,20 +303,15 @@ export default function Reports({ token }) {
           </button>
         </div>
 
-        {/* Inventory Report */}
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                      textAlign: 'center' }}>
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
           <div style={{ color: '#3E1F00', fontWeight: 'bold',
-                        fontSize: 16, marginBottom: 8 }}>
-            Inventory Report
-          </div>
+                        fontSize: 16, marginBottom: 8 }}>Inventory Report</div>
           <div style={{ color: '#888', fontSize: 12, marginBottom: 16 }}>
-            Export {inventory.length} products with stock levels and values
+            Export {inventory.length} products
           </div>
-          <button onClick={exportInventoryCSV}
-            disabled={exporting !== ''}
+          <button onClick={exportInventoryCSV} disabled={exporting !== ''}
             style={{ background: '#2D6A4F', border: 'none', color: 'white',
                      padding: '12px 24px', borderRadius: 8, cursor: 'pointer',
                      fontWeight: 'bold', fontSize: 14, width: '100%' }}>
@@ -272,20 +319,15 @@ export default function Reports({ token }) {
           </button>
         </div>
 
-        {/* Summary Report */}
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                      textAlign: 'center' }}>
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
           <div style={{ color: '#3E1F00', fontWeight: 'bold',
-                        fontSize: 16, marginBottom: 8 }}>
-            Summary Report
-          </div>
+                        fontSize: 16, marginBottom: 8 }}>Summary Report</div>
           <div style={{ color: '#888', fontSize: 12, marginBottom: 16 }}>
-            Export KPI summary with current filters applied
+            Export KPI summary with filters
           </div>
-          <button onClick={exportSummaryCSV}
-            disabled={exporting !== ''}
+          <button onClick={exportSummaryCSV} disabled={exporting !== ''}
             style={{ background: '#FFB800', border: 'none', color: '#3E1F00',
                      padding: '12px 24px', borderRadius: 8, cursor: 'pointer',
                      fontWeight: 'bold', fontSize: 14, width: '100%' }}>
@@ -304,7 +346,7 @@ export default function Reports({ token }) {
             Print Report
           </div>
           <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>
-            Print the sales table below as a formal report
+            Prints only the report preview table below — clean and professional
           </div>
         </div>
         <button onClick={printReport}
@@ -315,18 +357,18 @@ export default function Reports({ token }) {
         </button>
       </div>
 
-      {/* Sales Table Preview */}
+      {/* Sales Table Preview — this is what gets printed */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ color: '#3E1F00', fontWeight: 'bold',
                       fontSize: 15, marginBottom: 16 }}>
           Report Preview — {filteredSales.length} Records
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div ref={printRef} style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ background: '#3E1F00' }}>
-                {['Date','Product','Category','Region','Customer',
+                {['Date','Product','Category','Branch','Customer',
                   'Qty','Revenue','Profit','Salesperson','Payment'].map(h => (
                   <th key={h} style={{ padding: '10px 12px', color: '#FFB800',
                     textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
@@ -361,9 +403,11 @@ export default function Reports({ token }) {
                   <td style={{ padding: '8px 12px' }}>
                     <span style={{
                       background: s.payment === 'Cash' ? '#E8F5E9' :
-                                  s.payment === 'Mobile Money' ? '#E3F2FD' : '#FFF3E0',
+                                  s.payment === 'Mobile Money' ? '#E3F2FD' :
+                                  s.payment === 'Voucher' ? '#F3E5F5' : '#FFF3E0',
                       color: s.payment === 'Cash' ? '#2E7D32' :
-                             s.payment === 'Mobile Money' ? '#1565C0' : '#E65100',
+                             s.payment === 'Mobile Money' ? '#1565C0' :
+                             s.payment === 'Voucher' ? '#6A1B9A' : '#E65100',
                       padding: '2px 8px', borderRadius: 10, fontSize: 11
                     }}>
                       {s.payment}
