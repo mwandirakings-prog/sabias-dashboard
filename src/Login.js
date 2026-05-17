@@ -39,16 +39,6 @@ export default function Login({ onLogin }) {
     }
   };
 
-  const quickLogin = (role) => {
-    const credentials = {
-      admin: { email: 'admin@sabias.com', password: 'Admin@2026' },
-      salesperson: { email: 'tadala@sabias.com', password: 'Sales@2026' },
-      viewer: { email: 'viewer@sabias.com', password: 'View@2026' },
-    };
-    setEmail(credentials[role].email);
-    setPassword(credentials[role].password);
-  };
-
   return (
     <div style={{ minHeight: '100vh', background: '#FFF8F0', display: 'flex',
                   flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
