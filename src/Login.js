@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
+import Register from './Register';
 
 const API = 'https://malawi-sales-backend.onrender.com';
 
@@ -17,6 +18,9 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+
+  if (showRegister) return <Register onBack={() => setShowRegister(false)}/>;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,7 +83,6 @@ export default function Login({ onLogin }) {
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* Email */}
           <div style={{ marginBottom: 18 }}>
             <label style={{ display: 'block', fontSize: 12, color: '#888',
                             marginBottom: 6, fontWeight: 'bold' }}>
@@ -94,7 +97,6 @@ export default function Login({ onLogin }) {
                        background: '#FFFDF8' }}/>
           </div>
 
-          {/* Password */}
           <div style={{ marginBottom: 24 }}>
             <label style={{ display: 'block', fontSize: 12, color: '#888',
                             marginBottom: 6, fontWeight: 'bold' }}>
@@ -119,7 +121,6 @@ export default function Login({ onLogin }) {
             </div>
           </div>
 
-          {/* Submit */}
           <button type="submit" disabled={loading}
             style={{ width: '100%', padding: '14px', background: '#3E1F00',
                      border: 'none', borderRadius: 8, color: '#FFB800',
@@ -129,11 +130,11 @@ export default function Login({ onLogin }) {
           </button>
         </form>
 
-        {/* Quick login buttons */}
+        {/* Quick login */}
         <div style={{ marginTop: 28, borderTop: '1px solid #FFE8D0', paddingTop: 20 }}>
           <div style={{ fontSize: 11, color: '#AAA', textAlign: 'center',
                         marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Quick Demo Login
+            Quick Access
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {['admin', 'salesperson', 'viewer'].map(role => (
@@ -147,6 +148,17 @@ export default function Login({ onLogin }) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Register Link */}
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <span style={{ color: '#888', fontSize: 13 }}>
+            New business?{' '}
+            <span onClick={() => setShowRegister(true)}
+              style={{ color: '#FF6B35', cursor: 'pointer', fontWeight: 'bold' }}>
+              Register here
+            </span>
+          </span>
         </div>
       </div>
 
@@ -166,7 +178,6 @@ export default function Login({ onLogin }) {
         ))}
       </div>
 
-      {/* Footer */}
       <div style={{ marginTop: 32, color: '#BBB', fontSize: 11, fontFamily: 'Arial' }}>
         SABIAS © 2026 · Sales & Business Intelligence Analytics System
       </div>
