@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const API = 'https://malawi-sales-backend.onrender.com';
 
-export default function Inventory({ token }) {
+export default function Inventory({ token, user }) {
   const [inventory, setInventory] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,9 +24,10 @@ export default function Inventory({ token }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
+      const cid = user?.company_id;
       const [inv, sum] = await Promise.all([
-        axios.get(`${API}/api/inventory`, h),
-        axios.get(`${API}/api/inventory/summary`, h),
+        axios.get(`${API}/api/inventory?company_id=${cid}`, h),
+        axios.get(`${API}/api/inventory/summary?company_id=${cid}`, h),
       ]);
       setInventory(inv.data.data);
       setSummary(sum.data.data);
@@ -35,7 +36,7 @@ export default function Inventory({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -50,6 +51,7 @@ export default function Inventory({ token }) {
         unit_cost: parseFloat(form.unit_cost),
         quantity_in_stock: parseInt(form.quantity_in_stock),
         reorder_level: parseInt(form.reorder_level),
+        company_id: user?.company_id,
       };
       if (editItem) {
         await axios.put(`${API}/api/inventory/${editItem.id}`, payload, h);
@@ -131,7 +133,6 @@ export default function Inventory({ token }) {
   return (
     <div style={{ fontFamily: 'Arial' }}>
 
-      {/* Title */}
       <div style={{ display: 'flex', justifyContent: 'space-between',
                     alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
@@ -139,7 +140,10 @@ export default function Inventory({ token }) {
             Inventory Management
           </h2>
           <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-            Track stock levels, manage products and monitor inventory value
+            Track stock levels for{' '}
+            <strong style={{ color: '#FF6B35' }}>
+              {user?.company || 'Your Company'}
+            </strong>
           </p>
         </div>
         <button onClick={() => { setShowForm(!showForm); setEditItem(null);
@@ -152,7 +156,6 @@ export default function Inventory({ token }) {
         </button>
       </div>
 
-      {/* Success */}
       {successMsg && (
         <div style={{ background: '#E8F5E9', border: '1px solid #A5D6A7',
                       borderRadius: 8, padding: '12px 16px', marginBottom: 20,
@@ -161,7 +164,6 @@ export default function Inventory({ token }) {
         </div>
       )}
 
-      {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 16, marginBottom: 16 }}>
         <KPICard label="Total Products"
@@ -188,7 +190,6 @@ export default function Inventory({ token }) {
                  color="#9B5DE5" sub="Zero inventory"/>
       </div>
 
-      {/* Add/Edit Form */}
       {showForm && (
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 24 }}>
@@ -239,13 +240,11 @@ export default function Inventory({ token }) {
         </div>
       )}
 
-      {/* Inventory Table */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-
-        {/* Filters */}
         <div style={{ display: 'flex', justifyContent: 'space-between',
-                      alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                      alignItems: 'center', marginBottom: 16,
+                      flexWrap: 'wrap', gap: 10 }}>
           <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 15 }}>
             Stock List ({filtered.length} products)
           </div>
@@ -262,7 +261,8 @@ export default function Inventory({ token }) {
             </select>
             <button onClick={fetchData}
               style={{ padding: '8px 16px', background: '#FF6B35', border: 'none',
-                       borderRadius: 8, color: 'white', cursor: 'pointer', fontSize: 13 }}>
+                       borderRadius: 8, color: 'white', cursor: 'pointer',
+                       fontSize: 13 }}>
               Refresh
             </button>
           </div>
@@ -281,7 +281,8 @@ export default function Inventory({ token }) {
             </thead>
             <tbody>
               {filtered.map((item, i) => {
-                const status = getStockStatus(item.quantity_in_stock, item.reorder_level);
+                const status = getStockStatus(
+                  item.quantity_in_stock, item.reorder_level);
                 return (
                   <tr key={item.id} style={{
                     background: i % 2 === 0 ? '#FFF8F0' : 'white',
@@ -290,16 +291,20 @@ export default function Inventory({ token }) {
                                  color: '#3E1F00' }}>{item.product}</td>
                     <td style={{ padding: '10px 12px' }}>
                       <span style={{ background: '#FFF3E0', color: '#E65100',
-                                     padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>
+                                     padding: '2px 8px', borderRadius: 10,
+                                     fontSize: 11 }}>
                         {item.category}
                       </span>
                     </td>
-                    <td style={{ padding: '10px 12px', color: '#888' }}>{item.supplier}</td>
+                    <td style={{ padding: '10px 12px', color: '#888' }}>
+                      {item.supplier}
+                    </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right',
                                  color: '#2D6A4F', fontWeight: '500' }}>
                       MK {fmt(item.unit_price)}
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right', color: '#888' }}>
+                    <td style={{ padding: '10px 12px', textAlign: 'right',
+                                 color: '#888' }}>
                       MK {fmt(item.unit_cost)}
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right',
@@ -307,7 +312,8 @@ export default function Inventory({ token }) {
                                  color: status.color }}>
                       {fmt(item.quantity_in_stock)}
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right', color: '#888' }}>
+                    <td style={{ padding: '10px 12px', textAlign: 'right',
+                                 color: '#888' }}>
                       {fmt(item.reorder_level)}
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right',
