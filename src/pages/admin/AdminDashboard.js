@@ -47,8 +47,7 @@ export default function AdminDashboard({ token, user }) {
   const margin = kpis?.total_profit && kpis?.total_revenue
     ? ((kpis.total_profit / kpis.total_revenue) * 100).toFixed(1) : 0;
 
-  // Trend filter logic
-  const now = new Date();
+  // Trend filter l
   const getTrendData = () => {
     switch (trendFilter) {
       case 'Daily':
