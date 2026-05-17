@@ -39,16 +39,16 @@ function AdminApp({ user, token, logout }) {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'dashboard': return <AdminDashboard token={token}/>;
-      case 'sales': return <AdminSales token={token}/>;
-      case 'inventory': return <Inventory token={token}/>;
-      case 'users': return <UserManagement token={token}/>;
-      case 'analytics': return <Analytics token={token}/>;
-      case 'forecasting': return <Forecasting token={token}/>;
-      case 'reports': return <Reports token={token}/>;
-      case 'notifications': return <Notifications token={token}/>;
-      case 'settings': return <Settings user={user} token={token}/>;
-      default: return <AdminDashboard token={token}/>;
+      case 'dashboard':     return <AdminDashboard token={token} user={user}/>;
+      case 'sales':         return <AdminSales token={token} user={user}/>;
+      case 'inventory':     return <Inventory token={token} user={user}/>;
+      case 'users':         return <UserManagement token={token} user={user}/>;
+      case 'analytics':     return <Analytics token={token} user={user}/>;
+      case 'forecasting':   return <Forecasting token={token} user={user}/>;
+      case 'reports':       return <Reports token={token} user={user}/>;
+      case 'notifications': return <Notifications token={token} user={user}/>;
+      case 'settings':      return <Settings user={user} token={token}/>;
+      default:              return <AdminDashboard token={token} user={user}/>;
     }
   };
 
@@ -63,10 +63,12 @@ function AdminApp({ user, token, logout }) {
                       alignItems: 'center', marginBottom: 24,
                       paddingBottom: 16, borderBottom: '1px solid #FFE8D0' }}>
           <div style={{ color: '#FFB800', fontSize: 13, fontWeight: 'bold' }}>
-            SABIAS · Admin Portal
+            SABIAS · Admin Portal ·{' '}
+            <span style={{ color: '#FF6B35' }}>{user?.company || ''}</span>
           </div>
           <div style={{ color: '#888', fontSize: 13 }}>
-            Welcome back, <strong style={{ color: '#3E1F00' }}>{user?.name}</strong>
+            Welcome back,{' '}
+            <strong style={{ color: '#3E1F00' }}>{user?.name}</strong>
           </div>
         </div>
         {renderPage()}
@@ -81,13 +83,13 @@ function SalespersonApp({ user, token, logout }) {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'dashboard': return <SalespersonDashboard token={token} user={user}/>;
-      case 'newsale': return <NewSale token={token} user={user}/>;
-      case 'mysales': return <MySales token={token} user={user}/>;
-      case 'products': return <Products token={token}/>;
+      case 'dashboard':     return <SalespersonDashboard token={token} user={user}/>;
+      case 'newsale':       return <NewSale token={token} user={user}/>;
+      case 'mysales':       return <MySales token={token} user={user}/>;
+      case 'products':      return <Products token={token} user={user}/>;
       case 'notifications': return <SalespersonNotifications token={token} user={user}/>;
-      case 'profile': return <Profile token={token} user={user}/>;
-      default: return <SalespersonDashboard token={token} user={user}/>;
+      case 'profile':       return <Profile token={token} user={user}/>;
+      default:              return <SalespersonDashboard token={token} user={user}/>;
     }
   };
 
@@ -102,10 +104,12 @@ function SalespersonApp({ user, token, logout }) {
                       alignItems: 'center', marginBottom: 24,
                       paddingBottom: 16, borderBottom: '1px solid #FFE8D0' }}>
           <div style={{ color: '#FFB800', fontSize: 13, fontWeight: 'bold' }}>
-            SABIAS · Salesperson Portal
+            SABIAS · Salesperson Portal ·{' '}
+            <span style={{ color: '#FF6B35' }}>{user?.company || ''}</span>
           </div>
           <div style={{ color: '#888', fontSize: 13 }}>
-            Welcome back, <strong style={{ color: '#3E1F00' }}>{user?.name}</strong>
+            Welcome back,{' '}
+            <strong style={{ color: '#3E1F00' }}>{user?.name}</strong>
           </div>
         </div>
         {renderPage()}
@@ -120,14 +124,15 @@ function ViewerApp({ user, token, logout }) {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'dashboard': return <ViewerDashboard token={token} user={user}/>;
-      case 'analytics': return <ViewerDashboard token={token} user={user}/>;
-      case 'reports': return <ViewerReports token={token}/>;
-      case 'forecasting': return <ViewerForecasting token={token}/>;
-      case 'inventory': return <ViewerInventory token={token}/>;
+      case 'dashboard':     return <ViewerDashboard token={token} user={user}/>;
+      case 'analytics':     return <ViewerDashboard token={token} user={user}/>;
+      case 'mysales':       return <MySales token={token} user={user}/>;
+      case 'reports':       return <ViewerReports token={token} user={user}/>;
+      case 'forecasting':   return <ViewerForecasting token={token} user={user}/>;
+      case 'inventory':     return <ViewerInventory token={token} user={user}/>;
       case 'notifications': return <ViewerNotifications token={token} user={user}/>;
-      case 'profile': return <ViewerProfile token={token} user={user}/>;
-      default: return <ViewerDashboard token={token} user={user}/>;
+      case 'profile':       return <ViewerProfile token={token} user={user}/>;
+      default:              return <ViewerDashboard token={token} user={user}/>;
     }
   };
 
@@ -142,10 +147,12 @@ function ViewerApp({ user, token, logout }) {
                       alignItems: 'center', marginBottom: 24,
                       paddingBottom: 16, borderBottom: '1px solid #D6EAF8' }}>
           <div style={{ color: '#2980B9', fontSize: 13, fontWeight: 'bold' }}>
-            SABIAS · Viewer Portal
+            SABIAS · Viewer Portal ·{' '}
+            <span style={{ color: '#FF6B35' }}>{user?.company || ''}</span>
           </div>
           <div style={{ color: '#888', fontSize: 13 }}>
-            Welcome back, <strong style={{ color: '#2C3E50' }}>{user?.name}</strong>
+            Welcome back,{' '}
+            <strong style={{ color: '#2C3E50' }}>{user?.name}</strong>
           </div>
         </div>
         {renderPage()}
@@ -160,7 +167,8 @@ function AppContent() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', background: '#FFF8F0', fontFamily: 'Arial' }}>
+                    justifyContent: 'center', background: '#FFF8F0',
+                    fontFamily: 'Arial' }}>
         <div style={{ color: '#3E1F00', fontSize: 18 }}>Loading SABIAS...</div>
       </div>
     );
@@ -182,8 +190,8 @@ function AppContent() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', background: '#FFF8F0', fontFamily: 'Arial',
-                  flexDirection: 'column', gap: 16 }}>
+                  justifyContent: 'center', background: '#FFF8F0',
+                  fontFamily: 'Arial', flexDirection: 'column', gap: 16 }}>
       <h2 style={{ color: '#3E1F00' }}>Welcome, {user.name}!</h2>
       <button onClick={logout}
         style={{ background: '#FF6B35', border: 'none', color: 'white',
