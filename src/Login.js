@@ -5,12 +5,6 @@ import Register from './Register';
 
 const API = 'https://malawi-sales-backend.onrender.com';
 
-const ROLE_COLORS = {
-  admin: '#FF6B35',
-  salesperson: '#2D6A4F',
-  viewer: '#457B9D'
-};
-
 export default function Login({ onLogin }) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
@@ -120,22 +114,26 @@ export default function Login({ onLogin }) {
           </button>
         </form>
 
-        {/* Quick login */}
+        {/* Role Indicators */}
         <div style={{ marginTop: 28, borderTop: '1px solid #FFE8D0', paddingTop: 20 }}>
           <div style={{ fontSize: 11, color: '#AAA', textAlign: 'center',
                         marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Quick Access
+            Login As
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {['admin', 'salesperson', 'viewer'].map(role => (
-              <button key={role} onClick={() => quickLogin(role)}
+            {[
+              { role: 'Admin', color: '#FF6B35' },
+              { role: 'Salesperson', color: '#2D6A4F' },
+              { role: 'Viewer', color: '#457B9D' },
+            ].map(({ role, color }) => (
+              <div key={role}
                 style={{ flex: 1, padding: '8px 4px', borderRadius: 6,
-                         border: `1.5px solid ${ROLE_COLORS[role]}`,
-                         background: 'white', color: ROLE_COLORS[role],
-                         fontSize: 11, fontWeight: 'bold', cursor: 'pointer',
-                         textTransform: 'capitalize' }}>
+                         border: `1.5px solid ${color}`,
+                         background: 'white', color: color,
+                         fontSize: 11, fontWeight: 'bold',
+                         textAlign: 'center' }}>
                 {role}
-              </button>
+              </div>
             ))}
           </div>
         </div>
