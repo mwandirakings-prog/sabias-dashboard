@@ -9,7 +9,7 @@ import {
 const API = 'https://malawi-sales-backend.onrender.com';
 const COLORS = ['#FF6B35','#FFB800','#2D6A4F','#3E1F00','#E63946','#457B9D'];
 
-export default function Forecasting({ token }) {
+export default function Forecasting({ token, user }) {
   const [monthly, setMonthly] = useState([]);
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,9 +22,10 @@ export default function Forecasting({ token }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
+      const cid = user?.company_id;
       const [m, s] = await Promise.all([
-        axios.get(`${API}/api/monthly`, h),
-        axios.get(`${API}/api/sales`, h),
+        axios.get(`${API}/api/monthly?company_id=${cid}`, h),
+        axios.get(`${API}/api/sales?company_id=${cid}`, h),
       ]);
       setMonthly(m.data.data);
       setSales(s.data.data);
@@ -33,11 +34,10 @@ export default function Forecasting({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Simple linear regression forecast
   const generateForecast = (data, months = 3) => {
     if (data.length < 2) return [];
     const n = data.length;
@@ -73,7 +73,6 @@ export default function Forecasting({ token }) {
   const forecast3 = generateForecast(monthly, 3);
   const forecast6 = generateForecast(monthly, 6);
 
-  // Combined chart data — actual + forecast
   const chartData = [
     ...monthly.map(m => ({
       ...m,
@@ -84,7 +83,6 @@ export default function Forecasting({ token }) {
     ...forecast3,
   ];
 
-  // Growth rates
   const growthRates = monthly.map((m, i) => {
     if (i === 0) return { month: m.month, growth: 0 };
     const prev = parseFloat(monthly[i-1].revenue || 0);
@@ -99,7 +97,6 @@ export default function Forecasting({ token }) {
     ? (growthRates.slice(1).reduce((s, g) => s + g.growth, 0) /
        (growthRates.length - 1)).toFixed(1) : 0;
 
-  // Top products by demand
   const productDemand = sales
     .reduce((acc, s) => {
       const found = acc.find(x => x.product === s.product);
@@ -118,7 +115,6 @@ export default function Forecasting({ token }) {
     .sort((a, b) => b.units - a.units)
     .slice(0, 6);
 
-  // Latest actual revenue
   const latestRevenue = parseFloat(monthly[monthly.length - 1]?.revenue || 0);
   const nextMonthForecast = forecast3[0]?.revenue || 0;
   const targetProgress = savedTarget > 0
@@ -133,17 +129,18 @@ export default function Forecasting({ token }) {
   return (
     <div style={{ fontFamily: 'Arial' }}>
 
-      {/* Title */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
           Forecasting & Predictive Analytics
         </h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-          AI-powered sales forecasting and business projections
+          AI-powered forecasting for{' '}
+          <strong style={{ color: '#FF6B35' }}>
+            {user?.company || 'Your Company'}
+          </strong>
         </p>
       </div>
 
-      {/* KPI Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16, marginBottom: 24 }}>
         {[
@@ -153,7 +150,8 @@ export default function Forecasting({ token }) {
             color: '#2D6A4F', sub: 'Predicted' },
           { label: 'Avg Monthly Growth', value: `${avgGrowth}%`,
             color: '#FFB800', sub: 'Historical average' },
-          { label: 'Forecast Confidence', value: monthly.length >= 3 ? 'High' : 'Low',
+          { label: 'Forecast Confidence',
+            value: monthly.length >= 3 ? 'High' : 'Low',
             color: '#457B9D', sub: `Based on ${monthly.length} months` },
         ].map(({ label, value, color, sub }) => (
           <div key={label} style={{ background: 'white', borderRadius: 12,
@@ -196,7 +194,6 @@ export default function Forecasting({ token }) {
             </button>
           </div>
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between',
@@ -246,17 +243,16 @@ export default function Forecasting({ token }) {
         </div>
       </div>
 
-      {/* Forecast Chart */}
+      {/* Forecast Charts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
-
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
             Revenue Forecast — Next 3 Months
           </div>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
-            Solid line = actual · Dashed = forecast
+            Solid = actual · Dashed = forecast
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={chartData}
@@ -313,12 +309,10 @@ export default function Forecasting({ token }) {
               data={[...monthly.map(m => ({
                 month: m.month?.slice(5),
                 revenue: parseFloat(m.revenue || 0),
-                type: 'actual'
               })),
               ...forecast6.map(f => ({
                 month: f.month?.slice(5),
                 projected: f.revenue,
-                type: 'forecast'
               }))]}
               margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
               <defs>
@@ -350,14 +344,13 @@ export default function Forecasting({ token }) {
       {/* Product Demand + Growth Rate */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
-
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
             Top Product Demand Forecast
           </div>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
-            Products with highest unit sales — expect continued demand
+            Highest unit sales — expect continued demand
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={productDemand} layout="vertical"
@@ -423,8 +416,7 @@ export default function Forecasting({ token }) {
           <tbody>
             {forecast6.map((f, i) => {
               const prevRevenue = i === 0
-                ? latestRevenue
-                : forecast6[i-1].revenue;
+                ? latestRevenue : forecast6[i-1].revenue;
               const change = prevRevenue > 0
                 ? (((f.revenue - prevRevenue) / prevRevenue) * 100).toFixed(1)
                 : 0;
