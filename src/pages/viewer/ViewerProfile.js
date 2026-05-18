@@ -17,7 +17,8 @@ export default function ViewerProfile({ token, user }) {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API}/api/sales`,
+      const cid = user?.company_id;
+      const res = await axios.get(`${API}/api/sales?company_id=${cid}`,
         { headers: { Authorization: `Bearer ${token}` } });
       setSales(res.data.data);
     } catch (err) {
@@ -25,7 +26,7 @@ export default function ViewerProfile({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -44,8 +45,10 @@ export default function ViewerProfile({ token, user }) {
     showSuccess('Password changed successfully!');
   };
 
-  const totalRevenue = sales.reduce((sum, s) => sum + parseFloat(s.revenue || 0), 0);
-  const totalProfit = sales.reduce((sum, s) => sum + parseFloat(s.profit || 0), 0);
+  const totalRevenue = sales.reduce((sum, s) =>
+    sum + parseFloat(s.revenue || 0), 0);
+  const totalProfit = sales.reduce((sum, s) =>
+    sum + parseFloat(s.profit || 0), 0);
   const totalTransactions = sales.length;
   const regions = [...new Set(sales.map(s => s.region).filter(Boolean))];
   const topRegion = Object.entries(
@@ -72,9 +75,11 @@ export default function ViewerProfile({ token, user }) {
     <div style={{ fontFamily: 'Arial' }}>
 
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ color: '#2C3E50', margin: 0, fontSize: 22 }}>My Profile</h2>
+        <h2 style={{ color: '#2C3E50', margin: 0, fontSize: 22 }}>
+          My Profile
+        </h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-          Your account information and system overview
+          {user?.company || 'Your Company'} · Viewer Portal
         </p>
       </div>
 
@@ -104,6 +109,10 @@ export default function ViewerProfile({ token, user }) {
                           fontSize: 15 }}>{user?.name}</div>
             <div style={{ color: '#888', fontSize: 12,
                           marginTop: 4 }}>{user?.email}</div>
+            <div style={{ color: '#FF6B35', fontSize: 12, marginTop: 4,
+                          fontWeight: 'bold' }}>
+              {user?.company || 'Your Company'}
+            </div>
             <span style={{ display: 'inline-block', marginTop: 8,
                            background: '#D6EAF8', color: '#1565C0',
                            padding: '3px 12px', borderRadius: 10,
@@ -112,7 +121,7 @@ export default function ViewerProfile({ token, user }) {
               {user?.role}
             </span>
             <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
-              📍 {user?.region}
+              📍 {user?.region === 'all' ? 'All Branches' : user?.region}
             </div>
             <div style={{ marginTop: 8, background: '#E8F5E9',
                           borderRadius: 8, padding: '6px 10px',
@@ -145,16 +154,21 @@ export default function ViewerProfile({ token, user }) {
           {/* Profile Tab */}
           {activeTab === 'profile' && (
             <div>
-              <h3 style={{ color: '#2C3E50', marginTop: 0 }}>My Information</h3>
+              <h3 style={{ color: '#2C3E50', marginTop: 0 }}>
+                My Information
+              </h3>
               <div style={{ display: 'grid',
                             gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 {[
                   { label: 'Full Name', value: user?.name },
                   { label: 'Email Address', value: user?.email },
                   { label: 'Role', value: user?.role },
+                  { label: 'Company', value: user?.company || 'N/A' },
                   { label: 'Access Level', value: 'Read Only' },
-                  { label: 'Region', value: user?.region },
-                  { label: 'System', value: 'SABIAS v1.0.0' },
+                  { label: 'Branch', value: user?.region === 'all'
+                    ? 'All Branches' : user?.region },
+                  { label: 'Total Sales Viewed', value: totalTransactions },
+                  { label: 'System', value: 'SABIAS v2.0' },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ background: '#EBF5FB',
                     borderRadius: 10, padding: 16,
@@ -162,8 +176,9 @@ export default function ViewerProfile({ token, user }) {
                     <div style={{ fontSize: 11, color: '#888',
                                   marginBottom: 4 }}>{label}</div>
                     <div style={{ fontWeight: 'bold', color: '#2C3E50',
-                                  fontSize: 14, textTransform:
-                                  label === 'Role' ? 'capitalize' : 'none' }}>
+                                  fontSize: 14,
+                                  textTransform: label === 'Role'
+                                    ? 'capitalize' : 'none' }}>
                       {value}
                     </div>
                   </div>
@@ -209,20 +224,25 @@ export default function ViewerProfile({ token, user }) {
           {activeTab === 'overview' && (
             <div>
               <h3 style={{ color: '#2C3E50', marginTop: 0 }}>
-                System Overview
+                System Overview —{' '}
+                <span style={{ color: '#FF6B35' }}>
+                  {user?.company || 'Your Company'}
+                </span>
               </h3>
               <div style={{ display: 'grid',
                             gridTemplateColumns: 'repeat(2, 1fr)',
                             gap: 16, marginBottom: 24 }}>
                 {[
-                  { label: 'Total Transactions', value: totalTransactions,
-                    color: '#2980B9', icon: '🧾' },
-                  { label: 'Total Revenue', value: `MK ${fmt(totalRevenue)}`,
+                  { label: 'Total Transactions',
+                    value: totalTransactions, color: '#2980B9', icon: '🧾' },
+                  { label: 'Total Revenue',
+                    value: `MK ${fmt(totalRevenue)}`,
                     color: '#2D6A4F', icon: '💰' },
-                  { label: 'Total Profit', value: `MK ${fmt(totalProfit)}`,
+                  { label: 'Total Profit',
+                    value: `MK ${fmt(totalProfit)}`,
                     color: '#FFB800', icon: '📈' },
-                  { label: 'Active Regions', value: regions.length,
-                    color: '#9B5DE5', icon: '🌍' },
+                  { label: 'Active Branches',
+                    value: regions.length, color: '#9B5DE5', icon: '🌍' },
                 ].map(({ label, value, color, icon }) => (
                   <div key={label} style={{ background: 'white',
                     borderRadius: 12, padding: 20,
@@ -242,7 +262,7 @@ export default function ViewerProfile({ token, user }) {
                               padding: 20, color: 'white', marginBottom: 16 }}>
                   <div style={{ color: '#4CC9F0', fontWeight: 'bold',
                                 fontSize: 15, marginBottom: 8 }}>
-                    🏆 Top Performing Region
+                    🏆 Top Performing Branch
                   </div>
                   <div style={{ fontSize: 22, fontWeight: 'bold' }}>
                     {topRegion[0]}
@@ -257,7 +277,7 @@ export default function ViewerProfile({ token, user }) {
                             padding: 16, border: '1px solid #D6EAF8' }}>
                 <div style={{ fontWeight: 'bold', color: '#2C3E50',
                               marginBottom: 8 }}>
-                  Active Regions
+                  Active Branches
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {regions.map(r => (
@@ -289,8 +309,7 @@ export default function ViewerProfile({ token, user }) {
                     <label style={{ fontSize: 11, color: '#555',
                                     fontWeight: 'bold', display: 'block',
                                     marginBottom: 6 }}>{label}</label>
-                    <input type="password" required
-                      value={passwords[key]}
+                    <input type="password" required value={passwords[key]}
                       onChange={(e) => setPasswords({
                         ...passwords, [key]: e.target.value })}
                       style={{ width: '100%', padding: '10px 12px',
@@ -302,7 +321,7 @@ export default function ViewerProfile({ token, user }) {
                 <div style={{ background: '#EBF5FB', borderRadius: 8,
                               padding: 12, marginBottom: 16,
                               fontSize: 12, color: '#888' }}>
-                  💡 Password must be at least 8 characters with uppercase and numbers
+                  💡 Password must be at least 8 characters
                 </div>
                 <button type="submit"
                   style={{ background: '#2980B9', border: 'none',
