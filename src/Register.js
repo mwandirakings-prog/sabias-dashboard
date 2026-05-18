@@ -52,15 +52,16 @@ export default function Register({ onBack }) {
   if (success) return (
     <div style={{ minHeight: '100vh', background: '#FFF8F0',
                   display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontFamily: 'Arial' }}>
+                  justifyContent: 'center', fontFamily: 'Arial',
+                  padding: 20 }}>
       <div style={{ background: 'white', borderRadius: 16, padding: 48,
                     boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-                    textAlign: 'center', maxWidth: 480 }}>
-        <div style={{ fontSize: 60, marginBottom: 16 }}>🎉</div>
-        <h2 style={{ color: '#3E1F00', marginBottom: 8 }}>
+                    textAlign: 'center', maxWidth: 480,
+                    width: '100%', boxSizing: 'border-box' }}>
+        <h2 style={{ color: '#3E1F00', marginBottom: 8, fontSize: 22 }}>
           Registration Successful!
         </h2>
-        <p style={{ color: '#888', marginBottom: 8 }}>
+        <p style={{ color: '#888', marginBottom: 8, fontSize: 14 }}>
           Your company <strong>{form.company_name}</strong> has been
           registered successfully.
         </p>
@@ -70,14 +71,21 @@ export default function Register({ onBack }) {
           Login with your email and password.
         </p>
         <div style={{ background: '#FFF8F0', borderRadius: 10,
-                      padding: 16, marginBottom: 24,
-                      fontSize: 12, color: '#888', textAlign: 'left' }}>
-          <div>📍 District: <strong>{form.city}</strong></div>
-          <div style={{ marginTop: 4 }}>
-            👤 Admin: <strong>{form.admin_name}</strong>
+                      padding: 16, marginBottom: 24, fontSize: 13,
+                      color: '#555', textAlign: 'left',
+                      border: '1px solid #FFE8D0' }}>
+          <div>Company: <strong>{form.company_name}</strong></div>
+          <div style={{ marginTop: 6 }}>
+            District: <strong>{form.city}</strong>
           </div>
-          <div style={{ marginTop: 4 }}>
-            📧 Email: <strong>{form.email}</strong>
+          <div style={{ marginTop: 6 }}>
+            Admin: <strong>{form.admin_name}</strong>
+          </div>
+          <div style={{ marginTop: 6 }}>
+            Email: <strong>{form.email}</strong>
+          </div>
+          <div style={{ marginTop: 6 }}>
+            Phone: <strong>{form.phone}</strong>
           </div>
         </div>
         <button onClick={onBack}
@@ -87,7 +95,7 @@ export default function Register({ onBack }) {
           Go to Login
         </button>
         <div style={{ marginTop: 16, fontSize: 11, color: '#AAA' }}>
-          By SABIAS · Kings Mwandira, CEO 🇲🇼
+          By SABIAS · Kings Mwandira, CEO
         </div>
       </div>
     </div>
@@ -100,7 +108,8 @@ export default function Register({ onBack }) {
                   padding: 20 }}>
       <div style={{ background: 'white', borderRadius: 16, padding: 40,
                     boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-                    width: '100%', maxWidth: 560 }}>
+                    width: '100%', maxWidth: 560,
+                    boxSizing: 'border-box' }}>
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
@@ -156,7 +165,7 @@ export default function Register({ onBack }) {
           <div style={{ background: '#FFEBEE', border: '1px solid #FFCDD2',
                         borderRadius: 8, padding: '10px 14px', marginBottom: 20,
                         color: '#C62828', fontSize: 13 }}>
-            ⚠️ {error}
+            {error}
           </div>
         )}
 
@@ -257,7 +266,7 @@ export default function Register({ onBack }) {
                          border: 'none', color: 'white', padding: '13px',
                          borderRadius: 8, cursor: 'pointer',
                          fontWeight: 'bold', fontSize: 15 }}>
-                Next — Admin Account →
+                Next — Admin Account
               </button>
             </div>
           )}
@@ -270,14 +279,21 @@ export default function Register({ onBack }) {
                             padding: 14, marginBottom: 20,
                             border: '1px solid #FFE8D0' }}>
                 <div style={{ fontSize: 11, color: '#888',
-                              marginBottom: 6, fontWeight: 'bold' }}>
+                              marginBottom: 8, fontWeight: 'bold' }}>
                   COMPANY SUMMARY
                 </div>
-                <div style={{ fontSize: 13, color: '#3E1F00' }}>
-                  🏢 <strong>{form.company_name}</strong>
+                <div style={{ fontSize: 13, color: '#3E1F00',
+                              marginBottom: 4 }}>
+                  Company: <strong>{form.company_name}</strong>
                 </div>
-                <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                  📍 {form.city} · 📧 {form.email} · 📱 {form.phone}
+                <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>
+                  District: <strong>{form.city}</strong>
+                </div>
+                <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>
+                  Email: <strong>{form.email}</strong>
+                </div>
+                <div style={{ fontSize: 12, color: '#888' }}>
+                  Phone: <strong>{form.phone}</strong>
                 </div>
               </div>
 
@@ -298,7 +314,7 @@ export default function Register({ onBack }) {
               <div style={{ background: '#FFF8F0', borderRadius: 8,
                             padding: 12, marginBottom: 16,
                             fontSize: 12, color: '#888' }}>
-                📧 Login email will be:{' '}
+                Login email will be:{' '}
                 <strong style={{ color: '#FF6B35' }}>{form.email}</strong>
               </div>
 
@@ -336,7 +352,7 @@ export default function Register({ onBack }) {
                            color: '#FFB800', padding: '13px', borderRadius: 8,
                            cursor: 'pointer', fontWeight: 'bold',
                            fontSize: 14 }}>
-                  ← Back
+                  Back
                 </button>
                 <button type="submit" disabled={submitting}
                   style={{ flex: 2,
@@ -344,7 +360,7 @@ export default function Register({ onBack }) {
                            border: 'none', color: 'white', padding: '13px',
                            borderRadius: 8, cursor: 'pointer',
                            fontWeight: 'bold', fontSize: 15 }}>
-                  {submitting ? 'Registering...' : '🚀 Register Company'}
+                  {submitting ? 'Registering...' : 'Register Company'}
                 </button>
               </div>
             </div>
