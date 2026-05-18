@@ -12,7 +12,8 @@ export default function SalespersonDashboard({ token, user }) {
   const [search, setSearch] = useState('');
   const [form, setForm] = useState({
     sale_date: new Date().toISOString().split('T')[0],
-    product: '', category: '', region: user?.region !== 'all' ? user?.region : '',
+    product: '', category: '',
+    region: user?.region !== 'all' ? user?.region : '',
     customer: '', quantity: '', unit_price: '', unit_cost: '',
     salesperson: user?.name || '', payment: 'Cash'
   });
@@ -22,7 +23,8 @@ export default function SalespersonDashboard({ token, user }) {
   const fetchSales = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API}/api/sales`,
+      const cid = user?.company_id;
+      const res = await axios.get(`${API}/api/sales?company_id=${cid}`,
         { headers: { Authorization: `Bearer ${token}` } });
       setSales(res.data.data);
     } catch (err) {
@@ -30,7 +32,7 @@ export default function SalespersonDashboard({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
 
@@ -43,6 +45,7 @@ export default function SalespersonDashboard({ token, user }) {
         quantity: parseInt(form.quantity),
         unit_price: parseFloat(form.unit_price),
         unit_cost: parseFloat(form.unit_cost),
+        company_id: user?.company_id,
       }, { headers: { Authorization: `Bearer ${token}` } });
       setSuccessMsg('Sale submitted successfully!');
       setForm({
@@ -71,8 +74,12 @@ export default function SalespersonDashboard({ token, user }) {
     s.sale_date?.split('T')[0] === new Date().toISOString().split('T')[0]
   );
 
-  const totalMyRevenue = mySales.reduce((sum, s) => sum + parseFloat(s.revenue || 0), 0);
-  const totalMyProfit = mySales.reduce((sum, s) => sum + parseFloat(s.profit || 0), 0);
+  const totalMyRevenue = mySales.reduce((sum, s) =>
+    sum + parseFloat(s.revenue || 0), 0);
+  const totalMyProfit = mySales.reduce((sum, s) =>
+    sum + parseFloat(s.profit || 0), 0);
+  const myMargin = totalMyRevenue > 0
+    ? ((totalMyProfit / totalMyRevenue) * 100).toFixed(1) : 0;
 
   const filteredSales = mySales.filter(s =>
     search === '' ||
@@ -93,7 +100,6 @@ export default function SalespersonDashboard({ token, user }) {
   return (
     <div style={{ fontFamily: 'Arial' }}>
 
-      {/* Page Title */}
       <div style={{ display: 'flex', justifyContent: 'space-between',
                     alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
@@ -101,7 +107,11 @@ export default function SalespersonDashboard({ token, user }) {
             My Dashboard
           </h2>
           <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-            Welcome back, {user?.name} · {user?.region !== 'all' ? user?.region : 'All Regions'}
+            Welcome back, <strong style={{ color: '#FF6B35' }}>{user?.name}</strong>
+            {' '}·{' '}
+            {user?.company || 'Your Company'}
+            {' '}·{' '}
+            {user?.region !== 'all' ? user?.region : 'All Branches'}
           </p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
@@ -112,7 +122,6 @@ export default function SalespersonDashboard({ token, user }) {
         </button>
       </div>
 
-      {/* Success Message */}
       {successMsg && (
         <div style={{ background: '#E8F5E9', border: '1px solid #A5D6A7',
                       borderRadius: 8, padding: '12px 16px', marginBottom: 20,
@@ -126,20 +135,19 @@ export default function SalespersonDashboard({ token, user }) {
                     gap: 16, marginBottom: 24 }}>
         <KPICard label="My Total Revenue"
                  value={`MK ${fmt(totalMyRevenue)}`}
-                 color="#FF6B35"
-                 sub="All time"/>
+                 color="#FF6B35" sub="All time"/>
         <KPICard label="My Total Profit"
                  value={`MK ${fmt(totalMyProfit)}`}
-                 color="#2D6A4F"
-                 sub="All time"/>
+                 color="#2D6A4F" sub="All time"/>
         <KPICard label="Today's Sales"
                  value={todaySales.length}
                  color="#FFB800"
-                 sub={`MK ${fmt(todaySales.reduce((s, x) => s + parseFloat(x.revenue || 0), 0))}`}/>
-        <KPICard label="Total Transactions"
-                 value={mySales.length}
+                 sub={`MK ${fmt(todaySales.reduce((s, x) =>
+                   s + parseFloat(x.revenue || 0), 0))}`}/>
+        <KPICard label="Profit Margin"
+                 value={`${myMargin}%`}
                  color="#457B9D"
-                 sub="All records"/>
+                 sub={`${mySales.length} total transactions`}/>
       </div>
 
       {/* New Sale Form */}
@@ -157,8 +165,9 @@ export default function SalespersonDashboard({ token, user }) {
                 { label: 'Sale Date', key: 'sale_date', type: 'date' },
                 { label: 'Product Name', key: 'product', type: 'text' },
                 { label: 'Category', key: 'category', type: 'text' },
-                { label: 'Region', key: 'region', type: 'text' },
-                { label: 'Customer (optional)', key: 'customer', type: 'text', required: false },
+                { label: 'Branch/Region', key: 'region', type: 'text' },
+                { label: 'Customer (optional)', key: 'customer',
+                  type: 'text', required: false },
                 { label: 'Quantity', key: 'quantity', type: 'number' },
                 { label: 'Unit Price (MWK)', key: 'unit_price', type: 'number' },
                 { label: 'Unit Cost (MWK)', key: 'unit_cost', type: 'number' },
@@ -190,11 +199,11 @@ export default function SalespersonDashboard({ token, user }) {
                   <option>Mobile Money</option>
                   <option>Credit</option>
                   <option>Bank Transfer</option>
+                  <option>Voucher</option>
                 </select>
               </div>
             </div>
 
-            {/* Auto-calculated preview */}
             {form.quantity && form.unit_price && (
               <div style={{ marginTop: 16, background: '#FFF8F0', borderRadius: 8,
                             padding: '12px 16px', display: 'flex', gap: 24 }}>
@@ -216,7 +225,8 @@ export default function SalespersonDashboard({ token, user }) {
                   <div>
                     <span style={{ color: '#888', fontSize: 12 }}>Margin: </span>
                     <strong style={{ color: '#FFB800' }}>
-                      {(((form.unit_price - form.unit_cost) / form.unit_price) * 100).toFixed(1)}%
+                      {(((form.unit_price - form.unit_cost) /
+                        form.unit_price) * 100).toFixed(1)}%
                     </strong>
                   </div>
                 )}
@@ -271,15 +281,16 @@ export default function SalespersonDashboard({ token, user }) {
           <div style={{ textAlign: 'center', padding: 40 }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
             <div style={{ color: '#888', fontSize: 14 }}>
-              No sales records found. Click New Sale to record your first sale!
+              No sales yet. Click New Sale to record your first sale!
             </div>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse',
+                            fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#3E1F00' }}>
-                  {['Date','Product','Category','Region','Customer',
+                  {['Date','Product','Category','Branch','Customer',
                     'Qty','Unit Price','Revenue','Profit','Margin','Payment'].map(h => (
                     <th key={h} style={{ padding: '10px 12px', color: '#FFB800',
                       textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
@@ -298,7 +309,9 @@ export default function SalespersonDashboard({ token, user }) {
                                  color: '#3E1F00' }}>{s.product}</td>
                     <td style={{ padding: '8px 12px' }}>{s.category}</td>
                     <td style={{ padding: '8px 12px' }}>{s.region}</td>
-                    <td style={{ padding: '8px 12px' }}>{s.customer || 'Walk-in'}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      {s.customer || 'Walk-in'}
+                    </td>
                     <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                       {fmt(s.quantity)}
                     </td>
@@ -314,14 +327,17 @@ export default function SalespersonDashboard({ token, user }) {
                       MK {fmt(s.profit)}
                     </td>
                     <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                      {s.margin ? (parseFloat(s.margin) * 100).toFixed(1) : 0}%
+                      {s.margin
+                        ? (parseFloat(s.margin) * 100).toFixed(1) : 0}%
                     </td>
                     <td style={{ padding: '8px 12px' }}>
                       <span style={{
                         background: s.payment === 'Cash' ? '#E8F5E9' :
-                                    s.payment === 'Mobile Money' ? '#E3F2FD' : '#FFF3E0',
+                                    s.payment === 'Mobile Money' ? '#E3F2FD' :
+                                    s.payment === 'Voucher' ? '#F3E5F5' : '#FFF3E0',
                         color: s.payment === 'Cash' ? '#2E7D32' :
-                               s.payment === 'Mobile Money' ? '#1565C0' : '#E65100',
+                               s.payment === 'Mobile Money' ? '#1565C0' :
+                               s.payment === 'Voucher' ? '#6A1B9A' : '#E65100',
                         padding: '2px 8px', borderRadius: 10, fontSize: 11
                       }}>
                         {s.payment}
