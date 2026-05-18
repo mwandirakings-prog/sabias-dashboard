@@ -190,7 +190,7 @@ export default function SalespersonDashboard({ token, user }) {
                     alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
-            🏠 My Dashboard
+            My Dashboard
           </h2>
           <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
             Welcome back,{' '}

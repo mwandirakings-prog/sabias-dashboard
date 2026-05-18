@@ -185,7 +185,7 @@ export default function MySales({ token, user }) {
                     alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
-            📋 My Sales History
+            My Sales History
           </h2>
           <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
             {user?.role === 'salesperson'
