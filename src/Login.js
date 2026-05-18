@@ -27,36 +27,53 @@ export default function Login({ onLogin }) {
         onLogin();
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Check your credentials.');
+      setError(err.response?.data?.message ||
+        'Login failed. Check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FFF8F0', display: 'flex',
-                  flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{
+      minHeight: '100vh',
+      background: '#FFF8F0',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px 16px',
+      boxSizing: 'border-box',
+      fontFamily: 'Arial',
+    }}>
 
       {/* Logo */}
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ background: '#3E1F00', borderRadius: 16, padding: '16px 32px',
-                      display: 'inline-block', marginBottom: 12 }}>
-          <div style={{ color: '#FFB800', fontSize: 36, fontWeight: 'bold',
-                        fontFamily: 'Arial', letterSpacing: 4 }}>SABIAS</div>
-          <div style={{ color: '#FF6B35', fontSize: 11, fontFamily: 'Arial', marginTop: 4 }}>
+      <div style={{ textAlign: 'center', marginBottom: 28,
+                    width: '100%', maxWidth: 420 }}>
+        <div style={{ background: '#3E1F00', borderRadius: 16,
+                      padding: '16px 24px', display: 'block',
+                      marginBottom: 12 }}>
+          <div style={{ color: '#FFB800', fontSize: 32, fontWeight: 'bold',
+                        letterSpacing: 4 }}>SABIAS</div>
+          <div style={{ color: '#FF6B35', fontSize: 11, marginTop: 4 }}>
             Sales & Business Intelligence Analytics System
           </div>
         </div>
-        <div style={{ color: '#888', fontSize: 13, fontFamily: 'Arial' }}>
+        <div style={{ color: '#888', fontSize: 13 }}>
           Sign in to your account
         </div>
       </div>
 
       {/* Login Card */}
-      <div style={{ background: 'white', borderRadius: 16, padding: 36,
-                    width: '100%', maxWidth: 420,
-                    boxShadow: '0 4px 24px rgba(62,31,0,0.10)',
-                    fontFamily: 'Arial' }}>
+      <div style={{
+        background: 'white',
+        borderRadius: 16,
+        padding: '28px 24px',
+        width: '100%',
+        maxWidth: 420,
+        boxSizing: 'border-box',
+        boxShadow: '0 4px 24px rgba(62,31,0,0.10)',
+      }}>
 
         {error && (
           <div style={{ background: '#FFF0F0', border: '1px solid #FFCCCC',
@@ -91,11 +108,12 @@ export default function Login({ onLogin }) {
                 value={password} required
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                style={{ width: '100%', padding: '12px 44px 12px 14px',
+                style={{ width: '100%', padding: '12px 60px 12px 14px',
                          borderRadius: 8, border: '1.5px solid #FFB800',
                          fontSize: 14, boxSizing: 'border-box', outline: 'none',
                          background: '#FFFDF8' }}/>
-              <button type="button" onClick={() => setShowPassword(!showPassword)}
+              <button type="button"
+                onClick={() => setShowPassword(!showPassword)}
                 style={{ position: 'absolute', right: 12, top: '50%',
                          transform: 'translateY(-50%)', background: 'none',
                          border: 'none', cursor: 'pointer', color: '#888',
@@ -109,15 +127,17 @@ export default function Login({ onLogin }) {
             style={{ width: '100%', padding: '14px', background: '#3E1F00',
                      border: 'none', borderRadius: 8, color: '#FFB800',
                      fontSize: 16, fontWeight: 'bold', cursor: 'pointer',
-                     letterSpacing: 1 }}>
+                     letterSpacing: 1, boxSizing: 'border-box' }}>
             {loading ? 'Signing in...' : 'SIGN IN'}
           </button>
         </form>
 
         {/* Role Indicators */}
-        <div style={{ marginTop: 28, borderTop: '1px solid #FFE8D0', paddingTop: 20 }}>
+        <div style={{ marginTop: 28, borderTop: '1px solid #FFE8D0',
+                      paddingTop: 20 }}>
           <div style={{ fontSize: 11, color: '#AAA', textAlign: 'center',
-                        marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                        marginBottom: 12, textTransform: 'uppercase',
+                        letterSpacing: 1 }}>
             Login As
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -128,9 +148,8 @@ export default function Login({ onLogin }) {
             ].map(({ role, color }) => (
               <div key={role}
                 style={{ flex: 1, padding: '8px 4px', borderRadius: 6,
-                         border: `1.5px solid ${color}`,
-                         background: 'white', color: color,
-                         fontSize: 11, fontWeight: 'bold',
+                         border: `1.5px solid ${color}`, background: 'white',
+                         color: color, fontSize: 11, fontWeight: 'bold',
                          textAlign: 'center' }}>
                 {role}
               </div>
@@ -143,15 +162,18 @@ export default function Login({ onLogin }) {
           <span style={{ color: '#888', fontSize: 13 }}>
             New business?{' '}
             <span onClick={() => setShowRegister(true)}
-              style={{ color: '#FF6B35', cursor: 'pointer', fontWeight: 'bold' }}>
+              style={{ color: '#FF6B35', cursor: 'pointer',
+                       fontWeight: 'bold' }}>
               Register here
             </span>
           </span>
         </div>
       </div>
 
-      {/* Role info */}
-      <div style={{ marginTop: 24, display: 'flex', gap: 16, fontFamily: 'Arial' }}>
+      {/* Role info dots */}
+      <div style={{ marginTop: 24, display: 'flex', gap: 24,
+                    width: '100%', maxWidth: 420,
+                    justifyContent: 'center' }}>
         {[
           { role: 'Admin', desc: 'Full access', color: '#FF6B35' },
           { role: 'Salesperson', desc: 'Own records', color: '#2D6A4F' },
@@ -166,7 +188,8 @@ export default function Login({ onLogin }) {
         ))}
       </div>
 
-      <div style={{ marginTop: 32, color: '#BBB', fontSize: 11, fontFamily: 'Arial' }}>
+      <div style={{ marginTop: 24, color: '#BBB', fontSize: 11,
+                    textAlign: 'center', padding: '0 16px' }}>
         SABIAS © 2026 · Sales & Business Intelligence Analytics System
       </div>
     </div>
