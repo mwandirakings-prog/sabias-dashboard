@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API = 'http://www.sabiasanalytics.com';
+const API = 'https://www.sabiasanalytics.com';
 
 const MALAWI_DISTRICTS = [
   'Balaka', 'Blantyre', 'Chikwawa', 'Chiradzulu', 'Chitipa',
