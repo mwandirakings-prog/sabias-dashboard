@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const API = 'https://malawi-sales-backend.onrender.com';
 
-export default function ViewerInventory({ token }) {
+export default function ViewerInventory({ token, user }) {
   const [inventory, setInventory] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,10 +15,11 @@ export default function ViewerInventory({ token }) {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      const cid = user?.company_id;
       const h = { headers: { Authorization: `Bearer ${token}` } };
       const [inv, sum] = await Promise.all([
-        axios.get(`${API}/api/inventory`, h),
-        axios.get(`${API}/api/inventory/summary`, h),
+        axios.get(`${API}/api/inventory?company_id=${cid}`, h),
+        axios.get(`${API}/api/inventory/summary?company_id=${cid}`, h),
       ]);
       setInventory(inv.data.data);
       setSummary(sum.data.data);
@@ -27,7 +28,7 @@ export default function ViewerInventory({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -62,7 +63,11 @@ export default function ViewerInventory({ token }) {
           Inventory View
         </h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-          Read-only view of current stock levels and inventory data
+          Stock levels for{' '}
+          <strong style={{ color: '#FF6B35' }}>
+            {user?.company || 'Your Company'}
+          </strong>
+          {' '}— read only
         </p>
       </div>
 
@@ -70,15 +75,19 @@ export default function ViewerInventory({ token }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 16, marginBottom: 16 }}>
         {[
-          { label: 'Total Products', value: fmt(summary?.total_products), color: '#2980B9' },
-          { label: 'Total Units', value: fmt(summary?.total_units), color: '#2D6A4F' },
-          { label: 'Retail Value', value: `MK ${fmt(summary?.total_retail_value)}`, color: '#FFB800' },
+          { label: 'Total Products',
+            value: fmt(summary?.total_products), color: '#2980B9' },
+          { label: 'Total Units',
+            value: fmt(summary?.total_units), color: '#2D6A4F' },
+          { label: 'Retail Value',
+            value: `MK ${fmt(summary?.total_retail_value)}`, color: '#FFB800' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: 'white', borderRadius: 12,
             padding: 20, borderLeft: `4px solid ${color}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>{label}</div>
-            <div style={{ color: '#2C3E50', fontSize: 20, fontWeight: 'bold' }}>{value}</div>
+            <div style={{ color: '#2C3E50', fontSize: 20,
+                          fontWeight: 'bold' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -86,15 +95,19 @@ export default function ViewerInventory({ token }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Cost Value', value: `MK ${fmt(summary?.total_cost_value)}`, color: '#457B9D' },
-          { label: 'Low Stock Items', value: fmt(summary?.low_stock), color: '#E63946' },
-          { label: 'Out of Stock', value: fmt(summary?.out_of_stock), color: '#9B5DE5' },
+          { label: 'Cost Value',
+            value: `MK ${fmt(summary?.total_cost_value)}`, color: '#457B9D' },
+          { label: 'Low Stock Items',
+            value: fmt(summary?.low_stock), color: '#E63946' },
+          { label: 'Out of Stock',
+            value: fmt(summary?.out_of_stock), color: '#9B5DE5' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: 'white', borderRadius: 12,
             padding: 20, borderLeft: `4px solid ${color}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>{label}</div>
-            <div style={{ color: '#2C3E50', fontSize: 20, fontWeight: 'bold' }}>{value}</div>
+            <div style={{ color: '#2C3E50', fontSize: 20,
+                          fontWeight: 'bold' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -103,7 +116,8 @@ export default function ViewerInventory({ token }) {
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between',
-                      alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                      alignItems: 'center', marginBottom: 16,
+                      flexWrap: 'wrap', gap: 10 }}>
           <div style={{ color: '#2C3E50', fontWeight: 'bold', fontSize: 15 }}>
             Stock List ({filtered.length} products)
           </div>
@@ -140,7 +154,8 @@ export default function ViewerInventory({ token }) {
             </thead>
             <tbody>
               {filtered.map((item, i) => {
-                const status = getStockStatus(item.quantity_in_stock, item.reorder_level);
+                const status = getStockStatus(
+                  item.quantity_in_stock, item.reorder_level);
                 return (
                   <tr key={item.id} style={{
                     background: i % 2 === 0 ? '#EBF5FB' : 'white',
