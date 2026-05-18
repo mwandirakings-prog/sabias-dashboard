@@ -7,7 +7,7 @@ import {
 
 const API = 'https://malawi-sales-backend.onrender.com';
 
-export default function ViewerForecasting({ token }) {
+export default function ViewerForecasting({ token, user }) {
   const [monthly, setMonthly] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -16,19 +16,19 @@ export default function ViewerForecasting({ token }) {
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
+      const cid = user?.company_id;
       const h = { headers: { Authorization: `Bearer ${token}` } };
-      const res = await axios.get(`${API}/api/monthly`, h);
+      const res = await axios.get(`${API}/api/monthly?company_id=${cid}`, h);
       setMonthly(res.data.data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Linear regression forecast
   const generateForecast = (data, months = 3) => {
     if (data.length < 2) return [];
     const n = data.length;
@@ -79,7 +79,8 @@ export default function ViewerForecasting({ token }) {
     const curr = parseFloat(m.revenue || 0);
     return {
       month: m.month?.slice(5),
-      growth: prev > 0 ? parseFloat(((curr - prev) / prev * 100).toFixed(1)) : 0
+      growth: prev > 0
+        ? parseFloat(((curr - prev) / prev * 100).toFixed(1)) : 0
     };
   });
 
@@ -104,21 +105,22 @@ export default function ViewerForecasting({ token }) {
           Forecasting & Analytics
         </h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-          Sales trends and revenue projections — read only view
+          Sales trends and projections for{' '}
+          <strong style={{ color: '#FF6B35' }}>
+            {user?.company || 'Your Company'}
+          </strong>
         </p>
       </div>
 
-      {/* Read Only Notice */}
       <div style={{ background: '#EBF5FB', borderRadius: 10, padding: 12,
                     border: '1px solid #D6EAF8', marginBottom: 20,
                     display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 18 }}>🔒</span>
         <span style={{ color: '#1565C0', fontSize: 13 }}>
-          Read-only view. Contact Admin to set revenue targets and configure forecasts.
+          Read-only view. Contact Admin to set revenue targets.
         </span>
       </div>
 
-      {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 16, marginBottom: 24 }}>
         {[
@@ -140,10 +142,8 @@ export default function ViewerForecasting({ token }) {
         ))}
       </div>
 
-      {/* Charts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
-
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ color: '#2C3E50', fontWeight: 'bold', marginBottom: 4 }}>
@@ -207,7 +207,6 @@ export default function ViewerForecasting({ token }) {
         </div>
       </div>
 
-      {/* Forecast Table */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ color: '#2C3E50', fontWeight: 'bold',
@@ -226,9 +225,11 @@ export default function ViewerForecasting({ token }) {
           </thead>
           <tbody>
             {forecast6.map((f, i) => {
-              const prevRevenue = i === 0 ? latestRevenue : forecast6[i-1].projected;
+              const prevRevenue = i === 0
+                ? latestRevenue : forecast6[i-1].projected;
               const change = prevRevenue > 0
-                ? (((f.projected - prevRevenue) / prevRevenue) * 100).toFixed(1) : 0;
+                ? (((f.projected - prevRevenue) / prevRevenue) * 100).toFixed(1)
+                : 0;
               const margin = f.projected > 0
                 ? ((f.profit / f.projected) * 100).toFixed(1) : 0;
               const confidence = i < 2 ? 'High' : i < 4 ? 'Medium' : 'Low';
