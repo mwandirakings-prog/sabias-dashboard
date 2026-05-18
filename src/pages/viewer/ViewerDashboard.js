@@ -20,12 +20,13 @@ export default function ViewerDashboard({ token, user }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
+      const cid = user?.company_id;
       const [k, r, c, m, s] = await Promise.all([
-        axios.get(`${API}/api/kpis`, h),
-        axios.get(`${API}/api/regions`, h),
-        axios.get(`${API}/api/categories`, h),
-        axios.get(`${API}/api/monthly`, h),
-        axios.get(`${API}/api/sales`, h),
+        axios.get(`${API}/api/kpis?company_id=${cid}`, h),
+        axios.get(`${API}/api/regions?company_id=${cid}`, h),
+        axios.get(`${API}/api/categories?company_id=${cid}`, h),
+        axios.get(`${API}/api/monthly?company_id=${cid}`, h),
+        axios.get(`${API}/api/sales?company_id=${cid}`, h),
       ]);
       setKpis(k.data.data);
       setRegions(r.data.data);
@@ -37,7 +38,7 @@ export default function ViewerDashboard({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -82,8 +83,11 @@ export default function ViewerDashboard({ token, user }) {
                     display: 'flex', justifyContent: 'space-between',
                     alignItems: 'center' }}>
         <div style={{ color: '#2980B9', fontSize: 13 }}>
-          You are in <strong>View-Only</strong> mode.
-          You can monitor and analyze but cannot modify data.
+          You are in <strong>View-Only</strong> mode for{' '}
+          <strong style={{ color: '#FF6B35' }}>
+            {user?.company || 'Your Company'}
+          </strong>
+          . You can monitor and analyze but cannot modify data.
         </div>
         <button onClick={fetchAll}
           style={{ background: '#2980B9', border: 'none', color: 'white',
@@ -99,7 +103,9 @@ export default function ViewerDashboard({ token, user }) {
           Business Intelligence Overview
         </h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-          Welcome, {user?.name} · Read-only access · All amounts in MWK
+          Welcome, <strong style={{ color: '#FF6B35' }}>{user?.name}</strong>
+          {' '}· Read-only access ·{' '}
+          {user?.company || 'Your Company'}
         </p>
       </div>
 
@@ -129,7 +135,7 @@ export default function ViewerDashboard({ token, user }) {
         <KPICard label="Avg Unit Price"
                  value={`MK ${fmt(kpis?.avg_unit_price)}`}
                  color="#E63946" sub="Across all sales"/>
-        <KPICard label="Active Regions"
+        <KPICard label="Active Branches"
                  value={regions.length}
                  color="#3E1F00" sub="Coverage areas"/>
         <KPICard label="Product Categories"
@@ -143,7 +149,7 @@ export default function ViewerDashboard({ token, user }) {
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 16 }}>
-            Revenue by Region
+            Revenue by Branch
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={regions}
@@ -171,9 +177,8 @@ export default function ViewerDashboard({ token, user }) {
                      tickFormatter={(v) => v?.slice(5)}/>
               <YAxis tick={{ fontSize: 10 }}
                      tickFormatter={(v) => `${(v/1000000).toFixed(1)}M`}/>
-              <Tooltip
-                formatter={(v, name) => [`MK ${fmt(v)}`, name]}
-                labelFormatter={(l) => `Month: ${l}`}/>
+              <Tooltip formatter={(v, name) => [`MK ${fmt(v)}`, name]}
+                       labelFormatter={(l) => `Month: ${l}`}/>
               <Legend/>
               <Line type="monotone" dataKey="revenue" name="Revenue"
                     stroke="#FF6B35" strokeWidth={2.5}
@@ -192,7 +197,7 @@ export default function ViewerDashboard({ token, user }) {
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 16 }}>
-            Revenue vs Profit by Region
+            Revenue vs Profit by Branch
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={regions}
@@ -291,7 +296,6 @@ export default function ViewerDashboard({ token, user }) {
             ))}
         </div>
       </div>
-
     </div>
   );
 }
