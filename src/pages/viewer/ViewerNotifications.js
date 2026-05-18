@@ -7,16 +7,21 @@ export default function ViewerNotifications({ token, user }) {
   const [sales, setSales] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [readIds, setReadIds] = useState([]);
+  const [readIds, setReadIds] = useState(() => {
+    const saved = localStorage.getItem(`sabias_vread_${user?.id}`);
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [expandedId, setExpandedId] = useState(null);
   const [filter, setFilter] = useState('All');
 
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
+      const cid = user?.company_id;
       const h = { headers: { Authorization: `Bearer ${token}` } };
       const [s, inv] = await Promise.all([
-        axios.get(`${API}/api/sales`, h),
-        axios.get(`${API}/api/inventory`, h),
+        axios.get(`${API}/api/sales?company_id=${cid}`, h),
+        axios.get(`${API}/api/inventory?company_id=${cid}`, h),
       ]);
       setSales(s.data.data);
       setInventory(inv.data.data);
@@ -25,34 +30,58 @@ export default function ViewerNotifications({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  useEffect(() => {
+    localStorage.setItem(`sabias_vread_${user?.id}`, JSON.stringify(readIds));
+  }, [readIds, user]);
+
+  const fmt = (n) => new Intl.NumberFormat('en-US').format(Math.round(n || 0));
 
   const generateNotifications = () => {
     const notifications = [];
 
-    // Low stock alerts — read only view
-    inventory.filter(i => i.quantity_in_stock <= i.reorder_level).forEach(item => {
+    inventory.filter(i => i.quantity_in_stock === 0).forEach(item => {
       notifications.push({
-        id: `stock-${item.id}`,
-        type: item.quantity_in_stock === 0 ? 'danger' : 'warning',
-        icon: item.quantity_in_stock === 0 ? '🚨' : '⚠️',
-        title: item.quantity_in_stock === 0 ? 'Out of Stock' : 'Low Stock',
-        message: `${item.product} has ${item.quantity_in_stock} units remaining. Reorder level is ${item.reorder_level} units.`,
+        id: `out-${item.id}`,
+        type: 'danger',
+        icon: '🚨',
+        title: 'Out of Stock',
+        summary: `${item.product} is completely out of stock!`,
+        message: `Product: ${item.product}\nCategory: ${item.category}\nCurrent Stock: 0 units\nReorder Level: ${item.reorder_level} units\nSupplier: ${item.supplier}\n\nAction Required: Notify admin to reorder immediately to avoid lost sales.`,
         time: 'Stock Alert',
         category: 'Inventory',
       });
     });
 
-    // Recent sales summary
-    const totalRevenue = sales.reduce((sum, s) => sum + parseFloat(s.revenue || 0), 0);
+    inventory.filter(i =>
+      i.quantity_in_stock > 0 && i.quantity_in_stock <= i.reorder_level
+    ).forEach(item => {
+      notifications.push({
+        id: `low-${item.id}`,
+        type: 'warning',
+        icon: '⚠️',
+        title: 'Low Stock Alert',
+        summary: `${item.product} — only ${item.quantity_in_stock} units left.`,
+        message: `Product: ${item.product}\nCategory: ${item.category}\nCurrent Stock: ${item.quantity_in_stock} units\nReorder Level: ${item.reorder_level} units\nSupplier: ${item.supplier}\n\nRecommendation: Notify admin to reorder soon.`,
+        time: 'Stock Alert',
+        category: 'Inventory',
+      });
+    });
+
+    const totalRevenue = sales.reduce((sum, s) =>
+      sum + parseFloat(s.revenue || 0), 0);
+    const totalProfit = sales.reduce((sum, s) =>
+      sum + parseFloat(s.profit || 0), 0);
     notifications.push({
       id: 'sales-1',
       type: 'success',
       icon: '💰',
       title: 'Sales Performance Update',
-      message: `Total system revenue is MK ${new Intl.NumberFormat('en-US').format(Math.round(totalRevenue))} from ${sales.length} transactions recorded.`,
+      summary: `Total revenue MK ${fmt(totalRevenue)} from ${sales.length} transactions.`,
+      message: `Sales Summary for ${user?.company || 'Your Company'}:\n\nTotal Transactions: ${sales.length}\nTotal Revenue: MK ${fmt(totalRevenue)}\nTotal Profit: MK ${fmt(totalProfit)}\nProfit Margin: ${totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0}%\n\nThis is a read-only summary. Contact admin for detailed reports.`,
       time: 'Analytics',
       category: 'Sales',
     });
@@ -62,7 +91,8 @@ export default function ViewerNotifications({ token, user }) {
       type: 'info',
       icon: '📊',
       title: 'Dashboard Updated',
-      message: 'Your viewer dashboard has been updated with the latest sales and analytics data.',
+      summary: 'Latest sales and analytics data loaded.',
+      message: 'Your viewer dashboard has been updated with the latest data from the database. All KPIs, charts and tables reflect current business performance.\n\nModules available to you:\n• Business Overview\n• Inventory View\n• Sales Records\n• Forecasting\n• Reports',
       time: 'System',
       category: 'System',
     });
@@ -72,7 +102,8 @@ export default function ViewerNotifications({ token, user }) {
       type: 'info',
       icon: '🔒',
       title: 'Read Only Access',
-      message: 'You have view-only access to SABIAS. Contact your admin to request additional permissions.',
+      summary: 'You have view-only access to SABIAS.',
+      message: `You are logged in as a Viewer for ${user?.company || 'Your Company'}.\n\nAs a Viewer you can:\n✅ View all dashboards and charts\n✅ Monitor sales performance\n✅ Check inventory levels\n✅ View forecasts and reports\n\nYou cannot:\n❌ Add or edit sales\n❌ Modify inventory\n❌ Manage users\n\nContact your admin for additional permissions.`,
       time: 'System',
       category: 'System',
     });
@@ -82,7 +113,8 @@ export default function ViewerNotifications({ token, user }) {
       type: 'success',
       icon: '✅',
       title: 'System Online',
-      message: 'SABIAS is fully operational. All dashboards and analytics are available for viewing.',
+      summary: 'SABIAS is fully operational.',
+      message: `System Status for ${user?.company || 'Your Company'}:\n\n✅ Frontend — Online\n✅ Backend API — Online\n✅ Database — Connected\n✅ Authentication — Active\n\nAll dashboards and analytics are available for viewing.`,
       time: 'System',
       category: 'System',
     });
@@ -94,25 +126,29 @@ export default function ViewerNotifications({ token, user }) {
   const filtered = filter === 'All'
     ? allNotifications
     : allNotifications.filter(n => n.category === filter);
-  const unreadCount = allNotifications.filter(n => !readIds.includes(n.id)).length;
+  const unreadCount = allNotifications.filter(n =>
+    !readIds.includes(n.id)).length;
 
-  const markRead = (id) => {
-    if (!readIds.includes(id)) setReadIds([...readIds, id]);
+  const handleClick = (id) => {
+    if (!readIds.includes(id)) setReadIds(prev => [...prev, id]);
+    setExpandedId(expandedId === id ? null : id);
   };
 
-  const markAllRead = () => setReadIds(allNotifications.map(n => n.id));
+  const markAllRead = () =>
+    setReadIds(allNotifications.map(n => n.id));
 
   const getTypeStyle = (type) => {
     switch (type) {
-      case 'danger': return { bg: '#FFEBEE', border: '#FFCDD2', color: '#C62828', dot: '#E53935' };
+      case 'danger':  return { bg: '#FFEBEE', border: '#FFCDD2', color: '#C62828', dot: '#E53935' };
       case 'warning': return { bg: '#FFF8E1', border: '#FFE082', color: '#E65100', dot: '#FF8F00' };
       case 'success': return { bg: '#E8F5E9', border: '#A5D6A7', color: '#2E7D32', dot: '#43A047' };
-      default: return { bg: '#E3F2FD', border: '#90CAF9', color: '#1565C0', dot: '#1E88E5' };
+      default:        return { bg: '#E3F2FD', border: '#90CAF9', color: '#1565C0', dot: '#1E88E5' };
     }
   };
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 80, color: '#2C3E50', fontSize: 18 }}>
+    <div style={{ textAlign: 'center', padding: 80, color: '#2C3E50',
+                  fontSize: 18 }}>
       Loading Notifications...
     </div>
   );
@@ -134,7 +170,7 @@ export default function ViewerNotifications({ token, user }) {
             )}
           </h2>
           <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-            System alerts and business updates
+            Click any notification to read full details
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -156,15 +192,19 @@ export default function ViewerNotifications({ token, user }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Total Notifications', value: allNotifications.length, color: '#2980B9' },
+          { label: 'Total Notifications',
+            value: allNotifications.length, color: '#2980B9' },
           { label: 'Unread', value: unreadCount, color: '#E63946' },
-          { label: 'Stock Alerts', value: allNotifications.filter(n => n.category === 'Inventory').length, color: '#E65100' },
+          { label: 'Stock Alerts',
+            value: allNotifications.filter(n =>
+              n.category === 'Inventory').length, color: '#E65100' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: 'white', borderRadius: 12,
             padding: 20, borderLeft: `4px solid ${color}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>{label}</div>
-            <div style={{ color: '#2C3E50', fontSize: 24, fontWeight: 'bold' }}>{value}</div>
+            <div style={{ color: '#2C3E50', fontSize: 24,
+                          fontWeight: 'bold' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -179,10 +219,12 @@ export default function ViewerNotifications({ token, user }) {
               color: filter === f ? 'white' : '#888',
             }}>
             {f}
-            <span style={{ marginLeft: 6, background: filter === f ? '#2980B9' : '#D6EAF8',
+            <span style={{ marginLeft: 6,
+                           background: filter === f ? '#2980B9' : '#D6EAF8',
                            color: filter === f ? 'white' : '#888',
                            padding: '1px 6px', borderRadius: 10, fontSize: 11 }}>
-              {f === 'All' ? allNotifications.length : allNotifications.filter(n => n.category === f).length}
+              {f === 'All' ? allNotifications.length
+                : allNotifications.filter(n => n.category === f).length}
             </span>
           </button>
         ))}
@@ -192,19 +234,25 @@ export default function ViewerNotifications({ token, user }) {
         {filtered.map(n => {
           const style = getTypeStyle(n.type);
           const isRead = readIds.includes(n.id);
+          const isExpanded = expandedId === n.id;
           return (
-            <div key={n.id} onClick={() => markRead(n.id)}
+            <div key={n.id} onClick={() => handleClick(n.id)}
               style={{
                 background: isRead ? 'white' : style.bg,
-                border: `1px solid ${isRead ? '#D6EAF8' : style.border}`,
+                border: `1px solid ${isExpanded
+                  ? style.color : isRead ? '#D6EAF8' : style.border}`,
                 borderRadius: 12, padding: 16, cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                opacity: isRead ? 0.7 : 1,
+                boxShadow: isExpanded
+                  ? '0 4px 16px rgba(0,0,0,0.12)'
+                  : '0 2px 8px rgba(0,0,0,0.04)',
+                transition: 'all 0.2s ease',
+                opacity: isRead && !isExpanded ? 0.75 : 1,
               }}>
               <div style={{ display: 'flex', justifyContent: 'space-between',
                             alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', gap: 12, flex: 1 }}>
-                  <div style={{ fontSize: 24, minWidth: 36, textAlign: 'center' }}>
+                  <div style={{ fontSize: 24, minWidth: 36,
+                                textAlign: 'center' }}>
                     {n.icon}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -218,7 +266,20 @@ export default function ViewerNotifications({ token, user }) {
                       )}
                     </div>
                     <div style={{ color: '#555', fontSize: 13, lineHeight: 1.5 }}>
-                      {n.message}
+                      {n.summary}
+                    </div>
+                    {isExpanded && (
+                      <div style={{ marginTop: 12, padding: 14,
+                                    background: style.bg, borderRadius: 8,
+                                    border: `1px solid ${style.border}`,
+                                    color: '#333', fontSize: 13,
+                                    lineHeight: 1.8, whiteSpace: 'pre-line' }}>
+                        {n.message}
+                      </div>
+                    )}
+                    <div style={{ marginTop: 8, fontSize: 11,
+                                  color: style.color, fontWeight: 'bold' }}>
+                      {isExpanded ? '▲ Click to collapse' : '▼ Click to read more'}
                     </div>
                   </div>
                 </div>
