@@ -1,22 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
 const API = 'https://malawi-sales-backend.onrender.com';
 
-export default function ViewerReports({ token }) {
+export default function ViewerReports({ token, user }) {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [filterRegion, setFilterRegion] = useState('All');
   const [filterCategory, setFilterCategory] = useState('All');
+  const printRef = useRef();
 
   const fmt = (n) => new Intl.NumberFormat('en-US').format(Math.round(n || 0));
 
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API}/api/sales`,
+      const cid = user?.company_id;
+      const res = await axios.get(`${API}/api/sales?company_id=${cid}`,
         { headers: { Authorization: `Bearer ${token}` } });
       setSales(res.data.data);
     } catch (err) {
@@ -24,7 +26,7 @@ export default function ViewerReports({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -39,9 +41,72 @@ export default function ViewerReports({ token }) {
   const uniqueRegions = ['All', ...new Set(sales.map(s => s.region).filter(Boolean))];
   const uniqueCategories = ['All', ...new Set(sales.map(s => s.category).filter(Boolean))];
 
-  const totalRevenue = filteredSales.reduce((sum, s) => sum + parseFloat(s.revenue || 0), 0);
-  const totalProfit = filteredSales.reduce((sum, s) => sum + parseFloat(s.profit || 0), 0);
-  const margin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
+  const totalRevenue = filteredSales.reduce((sum, s) =>
+    sum + parseFloat(s.revenue || 0), 0);
+  const totalProfit = filteredSales.reduce((sum, s) =>
+    sum + parseFloat(s.profit || 0), 0);
+  const margin = totalRevenue > 0
+    ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
+
+  const printReport = () => {
+    const printContent = printRef.current.innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>SABIAS Report — ${user?.company || 'Sales Report'}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h2 { color: #2C3E50; }
+            .meta { color: #888; font-size: 12px; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th { background: #2C3E50; color: #4CC9F0; padding: 8px 10px;
+                 text-align: left; }
+            td { padding: 7px 10px; border-bottom: 1px solid #D6EAF8; }
+            tr:nth-child(even) { background: #EBF5FB; }
+            .summary { display: flex; gap: 20px; margin-bottom: 20px; }
+            .kpi { border-left: 4px solid #2980B9; padding: 10px 14px;
+                   background: #EBF5FB; border-radius: 6px; }
+            .kpi-label { font-size: 11px; color: #888; }
+            .kpi-value { font-size: 16px; font-weight: bold; color: #2C3E50; }
+          </style>
+        </head>
+        <body>
+          <h2>SABIAS Sales Report — ${user?.company || ''}</h2>
+          <div class="meta">
+            Generated: ${new Date().toLocaleString()} |
+            Period: ${dateFrom || 'All time'} to ${dateTo || 'Present'} |
+            Branch: ${filterRegion} | Category: ${filterCategory}
+          </div>
+          <div class="summary">
+            <div class="kpi">
+              <div class="kpi-label">Transactions</div>
+              <div class="kpi-value">${filteredSales.length}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Total Revenue</div>
+              <div class="kpi-value">MK ${fmt(totalRevenue)}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Total Profit</div>
+              <div class="kpi-value">MK ${fmt(totalProfit)}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Profit Margin</div>
+              <div class="kpi-value">${margin}%</div>
+            </div>
+          </div>
+          ${printContent}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  };
 
   if (loading) return (
     <div style={{ textAlign: 'center', padding: 80,
@@ -58,7 +123,11 @@ export default function ViewerReports({ token }) {
           Reports
         </h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-          View and filter sales reports — read only access
+          Sales reports for{' '}
+          <strong style={{ color: '#FF6B35' }}>
+            {user?.company || 'Your Company'}
+          </strong>
+          {' '}— read only
         </p>
       </div>
 
@@ -91,7 +160,7 @@ export default function ViewerReports({ token }) {
           </div>
           <div>
             <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                            display: 'block', marginBottom: 6 }}>Region</label>
+                            display: 'block', marginBottom: 6 }}>Branch</label>
             <select value={filterRegion}
               onChange={(e) => setFilterRegion(e.target.value)}
               style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
@@ -129,8 +198,10 @@ export default function ViewerReports({ token }) {
                     gap: 16, marginBottom: 20 }}>
         {[
           { label: 'Transactions', value: filteredSales.length, color: '#2980B9' },
-          { label: 'Total Revenue', value: `MK ${fmt(totalRevenue)}`, color: '#2D6A4F' },
-          { label: 'Total Profit', value: `MK ${fmt(totalProfit)}`, color: '#FFB800' },
+          { label: 'Total Revenue',
+            value: `MK ${fmt(totalRevenue)}`, color: '#2D6A4F' },
+          { label: 'Total Profit',
+            value: `MK ${fmt(totalProfit)}`, color: '#FFB800' },
           { label: 'Profit Margin', value: `${margin}%`, color: '#9B5DE5' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: 'white', borderRadius: 12,
@@ -143,14 +214,23 @@ export default function ViewerReports({ token }) {
         ))}
       </div>
 
-      {/* Read Only Notice */}
-      <div style={{ background: '#EBF5FB', borderRadius: 10, padding: 12,
-                    border: '1px solid #D6EAF8', marginBottom: 20,
-                    display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 18 }}>🔒</span>
-        <span style={{ color: '#1565C0', fontSize: 13 }}>
-          You have read-only access. Contact your Admin to export reports.
-        </span>
+      {/* Print + Notice */}
+      <div style={{ display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center', background: '#EBF5FB',
+                    borderRadius: 10, padding: '12px 16px',
+                    border: '1px solid #D6EAF8', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 18 }}>🔒</span>
+          <span style={{ color: '#1565C0', fontSize: 13 }}>
+            Read-only access. Contact Admin to export CSV reports.
+          </span>
+        </div>
+        <button onClick={printReport}
+          style={{ background: '#2C3E50', border: 'none', color: '#4CC9F0',
+                   padding: '8px 20px', borderRadius: 8, cursor: 'pointer',
+                   fontWeight: 'bold', fontSize: 13 }}>
+          🖨 Print Report
+        </button>
       </div>
 
       {/* Sales Table */}
@@ -160,11 +240,12 @@ export default function ViewerReports({ token }) {
                       fontSize: 15, marginBottom: 16 }}>
           Sales Report — {filteredSales.length} Records
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <div ref={printRef} style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse',
+                          fontSize: 12 }}>
             <thead>
               <tr style={{ background: '#2C3E50' }}>
-                {['Date','Product','Category','Region','Customer',
+                {['Date','Product','Category','Branch','Customer',
                   'Qty','Revenue','Profit','Salesperson','Payment'].map(h => (
                   <th key={h} style={{ padding: '10px 12px', color: '#4CC9F0',
                     textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
@@ -183,7 +264,9 @@ export default function ViewerReports({ token }) {
                                color: '#2C3E50' }}>{s.product}</td>
                   <td style={{ padding: '8px 12px' }}>{s.category}</td>
                   <td style={{ padding: '8px 12px' }}>{s.region}</td>
-                  <td style={{ padding: '8px 12px' }}>{s.customer || 'Walk-in'}</td>
+                  <td style={{ padding: '8px 12px' }}>
+                    {s.customer || 'Walk-in'}
+                  </td>
                   <td style={{ padding: '8px 12px',
                                textAlign: 'right' }}>{s.quantity}</td>
                   <td style={{ padding: '8px 12px', textAlign: 'right',
@@ -198,9 +281,11 @@ export default function ViewerReports({ token }) {
                   <td style={{ padding: '8px 12px' }}>
                     <span style={{
                       background: s.payment === 'Cash' ? '#E8F5E9' :
-                                  s.payment === 'Mobile Money' ? '#E3F2FD' : '#FFF3E0',
+                                  s.payment === 'Mobile Money' ? '#E3F2FD' :
+                                  s.payment === 'Voucher' ? '#F3E5F5' : '#FFF3E0',
                       color: s.payment === 'Cash' ? '#2E7D32' :
-                             s.payment === 'Mobile Money' ? '#1565C0' : '#E65100',
+                             s.payment === 'Mobile Money' ? '#1565C0' :
+                             s.payment === 'Voucher' ? '#6A1B9A' : '#E65100',
                       padding: '2px 8px', borderRadius: 10, fontSize: 11
                     }}>
                       {s.payment}
