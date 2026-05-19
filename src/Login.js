@@ -20,13 +20,11 @@ export default function Login({ onLogin }) {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotRole, setForgotRole] = useState('');
 
-  // Check for reset token in URL
   const urlParams = new URLSearchParams(window.location.search);
   const resetToken = urlParams.get('reset');
   const [showReset, setShowReset] = useState(!!resetToken);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [resetMsg, setResetMsg] = useState('');
   const [resetError, setResetError] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [resetDone, setResetDone] = useState(false);
@@ -91,7 +89,6 @@ export default function Login({ onLogin }) {
       await axios.post(`${API}/api/auth/reset-password`,
         { token: resetToken, password: newPassword });
       setResetDone(true);
-      // Clean URL
       window.history.replaceState({}, document.title, '/');
     } catch (err) {
       setResetError(err.response?.data?.error ||
@@ -253,13 +250,11 @@ export default function Login({ onLogin }) {
           a password reset link.
         </p>
 
-        {/* Non-admin message */}
         {forgotRole && (
           <div style={{ background: '#FFF8E1',
                         border: '1px solid #FFE082',
                         borderRadius: 10, padding: '16px 18px',
                         marginBottom: 16, textAlign: 'center' }}>
-            <div style={{ fontSize: 20, marginBottom: 8 }}>🔒</div>
             <div style={{ color: '#E65100', fontWeight: 'bold',
                           fontSize: 14, marginBottom: 6 }}>
               Password Reset Not Available
@@ -272,7 +267,6 @@ export default function Login({ onLogin }) {
           </div>
         )}
 
-        {/* Success message */}
         {forgotMsg && (
           <div style={{ background: '#E8F5E9',
                         border: '1px solid #A5D6A7',
@@ -289,7 +283,6 @@ export default function Login({ onLogin }) {
           </div>
         )}
 
-        {/* Error message */}
         {forgotError && (
           <div style={{ background: '#FFEBEE',
                         border: '1px solid #FFCDD2',
@@ -423,7 +416,6 @@ export default function Login({ onLogin }) {
             </div>
           </div>
 
-          {/* Forgot Password Link */}
           <div style={{ textAlign: 'right', marginBottom: 20 }}>
             <span onClick={() => setShowForgot(true)}
               style={{ color: '#FF6B35', cursor: 'pointer',
@@ -442,7 +434,6 @@ export default function Login({ onLogin }) {
           </button>
         </form>
 
-        {/* Role Indicators */}
         <div style={{ marginTop: 28, borderTop: '1px solid #FFE8D0',
                       paddingTop: 20 }}>
           <div style={{ fontSize: 11, color: '#AAA', textAlign: 'center',

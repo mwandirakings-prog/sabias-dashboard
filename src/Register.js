@@ -13,7 +13,7 @@ const MALAWI_DISTRICTS = [
 ];
 
 const validateMalawiPhone = (phone) => {
-  const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  const cleaned = phone.replace(/[\s\-()/]/g, '');
   const patterns = [
     /^\+2659[9876]\d{7}$/,
     /^2659[9876]\d{7}$/,
@@ -252,7 +252,8 @@ export default function Register({ onBack }) {
                     placeholder="+265 999 000 000"
                     style={{ width: '100%', padding: '11px 13px',
                              borderRadius: 8,
-                             border: `1.5px solid ${phoneError ? '#C62828' : '#FFB800'}`,
+                             border: `1.5px solid ${phoneError
+                               ? '#C62828' : '#FFB800'}`,
                              fontSize: 13, boxSizing: 'border-box' }}/>
                   {phoneError && (
                     <div style={{ color: '#C62828', fontSize: 11,
@@ -324,7 +325,6 @@ export default function Register({ onBack }) {
           {/* Step 2 — Admin Account */}
           {step === 2 && (
             <div>
-              {/* Company Summary */}
               <div style={{ background: '#FFF8F0', borderRadius: 10,
                             padding: 14, marginBottom: 20,
                             border: '1px solid #FFE8D0' }}>
