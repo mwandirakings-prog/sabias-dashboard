@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API = 'https://www.sabiasanalytics.com';
+const API = 'https://malawi-sales-backend.onrender.com';
 
 const MALAWI_DISTRICTS = [
   'Balaka', 'Blantyre', 'Chikwawa', 'Chiradzulu', 'Chitipa',
@@ -12,11 +12,23 @@ const MALAWI_DISTRICTS = [
   'Salima', 'Thyolo', 'Zomba'
 ];
 
+const validateMalawiPhone = (phone) => {
+  const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  const patterns = [
+    /^\+2659[9876]\d{7}$/,
+    /^2659[9876]\d{7}$/,
+    /^09[9876]\d{7}$/,
+    /^9[9876]\d{7}$/,
+  ];
+  return patterns.some(p => p.test(cleaned));
+};
+
 export default function Register({ onBack }) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [form, setForm] = useState({
     company_name: '',
     email: '',
@@ -30,8 +42,25 @@ export default function Register({ onBack }) {
 
   const update = (key, value) => setForm({ ...form, [key]: value });
 
+  const handlePhoneChange = (value) => {
+    update('phone', value);
+    if (value.length > 5) {
+      if (!validateMalawiPhone(value)) {
+        setPhoneError('Please enter a valid Malawian phone number e.g. +265 999 000 000');
+      } else {
+        setPhoneError('');
+      }
+    } else {
+      setPhoneError('');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateMalawiPhone(form.phone)) {
+      setPhoneError('Please enter a valid Malawian phone number e.g. +265 999 000 000');
+      return;
+    }
     if (form.password !== form.confirm_password) {
       setError('Passwords do not match!');
       return;
@@ -58,6 +87,17 @@ export default function Register({ onBack }) {
                     boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
                     textAlign: 'center', maxWidth: 480,
                     width: '100%', boxSizing: 'border-box' }}>
+
+        <div style={{ width: 64, height: 64, borderRadius: '50%',
+                      background: '#E8F5E9', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      margin: '0 auto 20px',
+                      border: '3px solid #2D6A4F' }}>
+          <div style={{ fontSize: 28, color: '#2D6A4F', fontWeight: 'bold' }}>
+            ✓
+          </div>
+        </div>
+
         <h2 style={{ color: '#3E1F00', marginBottom: 8, fontSize: 22 }}>
           Registration Successful!
         </h2>
@@ -66,10 +106,11 @@ export default function Register({ onBack }) {
           registered successfully.
         </p>
         <p style={{ color: '#888', marginBottom: 24, fontSize: 13 }}>
-          A welcome email has been sent to{' '}
+          A confirmation email has been sent to{' '}
           <strong style={{ color: '#FF6B35' }}>{form.email}</strong>.
-          Login with your email and password.
+          Please check your inbox.
         </p>
+
         <div style={{ background: '#FFF8F0', borderRadius: 10,
                       padding: 16, marginBottom: 24, fontSize: 13,
                       color: '#555', textAlign: 'left',
@@ -81,13 +122,8 @@ export default function Register({ onBack }) {
           <div style={{ marginTop: 6 }}>
             Admin: <strong>{form.admin_name}</strong>
           </div>
-          <div style={{ marginTop: 6 }}>
-            Email: <strong>{form.email}</strong>
-          </div>
-          <div style={{ marginTop: 6 }}>
-            Phone: <strong>{form.phone}</strong>
-          </div>
         </div>
+
         <button onClick={onBack}
           style={{ background: '#FF6B35', border: 'none', color: 'white',
                    padding: '12px 32px', borderRadius: 8, cursor: 'pointer',
@@ -212,11 +248,21 @@ export default function Register({ onBack }) {
                     Phone Number *
                   </label>
                   <input type="text" required value={form.phone}
-                    onChange={(e) => update('phone', e.target.value)}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
                     placeholder="+265 999 000 000"
                     style={{ width: '100%', padding: '11px 13px',
-                             borderRadius: 8, border: '1.5px solid #FFB800',
+                             borderRadius: 8,
+                             border: `1.5px solid ${phoneError ? '#C62828' : '#FFB800'}`,
                              fontSize: 13, boxSizing: 'border-box' }}/>
+                  {phoneError && (
+                    <div style={{ color: '#C62828', fontSize: 11,
+                                  marginTop: 4 }}>
+                      {phoneError}
+                    </div>
+                  )}
+                  <div style={{ color: '#AAA', fontSize: 10, marginTop: 4 }}>
+                    Malawi numbers only (+265 or 09x)
+                  </div>
                 </div>
                 <div>
                   <label style={{ fontSize: 11, color: '#555',
@@ -257,6 +303,10 @@ export default function Register({ onBack }) {
                   if (!form.company_name || !form.email ||
                       !form.phone || !form.city) {
                     setError('Please fill all required fields!');
+                    return;
+                  }
+                  if (!validateMalawiPhone(form.phone)) {
+                    setPhoneError('Please enter a valid Malawian phone number e.g. +265 999 000 000');
                     return;
                   }
                   setError('');
@@ -309,13 +359,6 @@ export default function Register({ onBack }) {
                   style={{ width: '100%', padding: '11px 13px',
                            borderRadius: 8, border: '1.5px solid #FFB800',
                            fontSize: 13, boxSizing: 'border-box' }}/>
-              </div>
-
-              <div style={{ background: '#FFF8F0', borderRadius: 8,
-                            padding: 12, marginBottom: 16,
-                            fontSize: 12, color: '#888' }}>
-                Login email will be:{' '}
-                <strong style={{ color: '#FF6B35' }}>{form.email}</strong>
               </div>
 
               <div style={{ marginBottom: 16 }}>
