@@ -12,18 +12,13 @@ const MALAWI_DISTRICTS = [
   'Salima', 'Thyolo', 'Zomba'
 ];
 
-const MALAWI_PREFIXES = [
-  '99', '98',
-  '88', '84', 
-];
-
 const validateMalawiPhone = (phone) => {
   const cleaned = phone.replace(/[\s\-()/]/g, '');
-  return MALAWI_PREFIXES.some(prefix =>
-    new RegExp(`^\\+265${prefix}\\d{7}$`).test(cleaned) ||
-    new RegExp(`^265${prefix}\\d{7}$`).test(cleaned) ||
-    new RegExp(`^0${prefix}\\d{7}$`).test(cleaned) ||
-    new RegExp(`^${prefix}\\d{7}$`).test(cleaned)
+  return (
+    /^\+265(99|98|88|84)\d{7}$/.test(cleaned) ||
+    /^265(99|98|88|84)\d{7}$/.test(cleaned) ||
+    /^0(99|98|88|84)\d{7}$/.test(cleaned) ||
+    /^(99|98|88|84)\d{7}$/.test(cleaned)
   );
 };
 
@@ -280,11 +275,11 @@ export default function Register({ onBack }) {
                     </div>
                     <div style={{ color: '#AAA', fontSize: 10,
                                   lineHeight: 1.6 }}>
-                      Airtel: +26599x, +26598x
+                      Airtel: +26599xxxxxxx, +26598xxxxxxx
                     </div>
                     <div style={{ color: '#AAA', fontSize: 10,
                                   lineHeight: 1.6 }}>
-                      TNM: +26588x, +26584x
+                      TNM: +26588xxxxxxx, +26584xxxxxxx
                     </div>
                   </div>
                 </div>
