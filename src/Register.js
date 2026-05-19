@@ -13,8 +13,8 @@ const MALAWI_DISTRICTS = [
 ];
 
 const MALAWI_PREFIXES = [
-  '99', '98', '97', '96', '91', '90',
-  '88', '87', '86', '85', '84', '83',
+  '99', '98',
+  '88', '84', 
 ];
 
 const validateMalawiPhone = (phone) => {
@@ -280,13 +280,11 @@ export default function Register({ onBack }) {
                     </div>
                     <div style={{ color: '#AAA', fontSize: 10,
                                   lineHeight: 1.6 }}>
-                      Airtel: +26599x, +26598x, +26597x,
-                      +26596x, +26591x, +26590x
+                      Airtel: +26599x, +26598x
                     </div>
                     <div style={{ color: '#AAA', fontSize: 10,
                                   lineHeight: 1.6 }}>
-                      TNM: +26588x, +26587x, +26586x,
-                      +26585x, +26584x, +26583x
+                      TNM: +26588x, +26584x
                     </div>
                   </div>
                 </div>
