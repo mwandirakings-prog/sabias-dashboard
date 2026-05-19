@@ -12,16 +12,28 @@ const MALAWI_DISTRICTS = [
   'Salima', 'Thyolo', 'Zomba'
 ];
 
+// All valid Malawi prefixes
+// Airtel: 099, 098 
+// TNM:    088, 084
+const MALAWI_PREFIXES = [
+  '99', '98', // Airtel
+  '88', '84', // TNM
+];
+
 const validateMalawiPhone = (phone) => {
   const cleaned = phone.replace(/[\s\-()/]/g, '');
-  const patterns = [
-    /^\+2659[9876]\d{7}$/,
-    /^2659[9876]\d{7}$/,
-    /^09[9876]\d{7}$/,
-    /^9[9876]\d{7}$/,
-  ];
-  return patterns.some(p => p.test(cleaned));
+  return MALAWI_PREFIXES.some(prefix => (
+    cleaned === `+265${prefix}${'.'.repeat(7)}`.replace(/\./g, '') ||
+    new RegExp(`^\\+265${prefix}\\d{7}$`).test(cleaned) ||
+    new RegExp(`^265${prefix}\\d{7}$`).test(cleaned) ||
+    new RegExp(`^0${prefix}\\d{7}$`).test(cleaned) ||
+    new RegExp(`^${prefix}\\d{7}$`).test(cleaned)
+  ));
 };
+
+const getPhoneHint = () =>
+  'Valid formats: +26599xxxxxxx, +26598xxxxxxx, +26588xxxxxxx, ' +
+  '+26585xxxxxxx, +26591xxxxxxx, 099xxxxxxx, 088xxxxxxx';
 
 export default function Register({ onBack }) {
   const [step, setStep] = useState(1);
@@ -46,7 +58,7 @@ export default function Register({ onBack }) {
     update('phone', value);
     if (value.length > 5) {
       if (!validateMalawiPhone(value)) {
-        setPhoneError('Please enter a valid Malawian phone number e.g. +265 999 000 000');
+        setPhoneError('Please enter a valid Malawian phone number.');
       } else {
         setPhoneError('');
       }
@@ -58,7 +70,7 @@ export default function Register({ onBack }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateMalawiPhone(form.phone)) {
-      setPhoneError('Please enter a valid Malawian phone number e.g. +265 999 000 000');
+      setPhoneError('Please enter a valid Malawian phone number.');
       return;
     }
     if (form.password !== form.confirm_password) {
@@ -71,8 +83,15 @@ export default function Register({ onBack }) {
       await axios.post(`${API}/api/companies/register`, form);
       setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.error ||
-        'Registration failed. Please try again.');
+      const msg = err.response?.data?.error || '';
+      if (msg.toLowerCase().includes('already exists')) {
+        setError(
+          'This email address is already registered. ' +
+          'Please use a different email address to register a new company.'
+        );
+      } else {
+        setError(msg || 'Registration failed. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -91,8 +110,7 @@ export default function Register({ onBack }) {
         <div style={{ width: 64, height: 64, borderRadius: '50%',
                       background: '#E8F5E9', display: 'flex',
                       alignItems: 'center', justifyContent: 'center',
-                      margin: '0 auto 20px',
-                      border: '3px solid #2D6A4F' }}>
+                      margin: '0 auto 20px', border: '3px solid #2D6A4F' }}>
           <div style={{ fontSize: 28, color: '#2D6A4F', fontWeight: 'bold' }}>
             ✓
           </div>
@@ -249,7 +267,7 @@ export default function Register({ onBack }) {
                   </label>
                   <input type="text" required value={form.phone}
                     onChange={(e) => handlePhoneChange(e.target.value)}
-                    placeholder="+265 999 000 000"
+                    placeholder="+265 99x xxxxxxx"
                     style={{ width: '100%', padding: '11px 13px',
                              borderRadius: 8,
                              border: `1.5px solid ${phoneError
@@ -261,8 +279,24 @@ export default function Register({ onBack }) {
                       {phoneError}
                     </div>
                   )}
-                  <div style={{ color: '#AAA', fontSize: 10, marginTop: 4 }}>
-                    Malawi numbers only (+265 or 09x)
+                  {/* Phone hint box */}
+                  <div style={{ background: '#FFF8F0', borderRadius: 6,
+                                padding: '6px 8px', marginTop: 6,
+                                border: '1px solid #FFE8D0' }}>
+                    <div style={{ color: '#888', fontSize: 10,
+                                  fontWeight: 'bold', marginBottom: 3 }}>
+                      Accepted Malawi numbers:
+                    </div>
+                    <div style={{ color: '#AAA', fontSize: 10,
+                                  lineHeight: 1.6 }}>
+                      Airtel: +26599x, +26598x, +26597x,
+                      +26596x, +26591x, +26590x
+                    </div>
+                    <div style={{ color: '#AAA', fontSize: 10,
+                                  lineHeight: 1.6 }}>
+                      TNM: +26588x, +26587x, +26586x,
+                      +26585x, +26584x, +26583x
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -307,7 +341,8 @@ export default function Register({ onBack }) {
                     return;
                   }
                   if (!validateMalawiPhone(form.phone)) {
-                    setPhoneError('Please enter a valid Malawian phone number e.g. +265 999 000 000');
+                    setPhoneError(
+                      'Please enter a valid Malawian phone number.');
                     return;
                   }
                   setError('');
