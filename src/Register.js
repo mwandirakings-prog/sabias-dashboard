@@ -29,11 +29,6 @@ const validateMalawiPhone = (phone) => {
     new RegExp(`^0${prefix}\\d{7}$`).test(cleaned) ||
     new RegExp(`^${prefix}\\d{7}$`).test(cleaned)
   ));
-};
-
-const getPhoneHint = () =>
-  'Valid formats: +26599xxxxxxx, +26598xxxxxxx, +26588xxxxxxx, ' +
-  '+26585xxxxxxx, +26591xxxxxxx, 099xxxxxxx, 088xxxxxxx';
 
 export default function Register({ onBack }) {
   const [step, setStep] = useState(1);
