@@ -12,23 +12,20 @@ const MALAWI_DISTRICTS = [
   'Salima', 'Thyolo', 'Zomba'
 ];
 
-// All valid Malawi prefixes
-// Airtel: 099, 098 
-// TNM:    088, 084
 const MALAWI_PREFIXES = [
-  '99', '98', // Airtel
-  '88', '84', // TNM
+  '99', '98', '97', '96', '91', '90',
+  '88', '87', '86', '85', '84', '83',
 ];
 
 const validateMalawiPhone = (phone) => {
   const cleaned = phone.replace(/[\s\-()/]/g, '');
-  return MALAWI_PREFIXES.some(prefix => (
-    cleaned === `+265${prefix}${'.'.repeat(7)}`.replace(/\./g, '') ||
+  return MALAWI_PREFIXES.some(prefix =>
     new RegExp(`^\\+265${prefix}\\d{7}$`).test(cleaned) ||
     new RegExp(`^265${prefix}\\d{7}$`).test(cleaned) ||
     new RegExp(`^0${prefix}\\d{7}$`).test(cleaned) ||
     new RegExp(`^${prefix}\\d{7}$`).test(cleaned)
-  ));
+  );
+};
 
 export default function Register({ onBack }) {
   const [step, setStep] = useState(1);
@@ -274,7 +271,6 @@ export default function Register({ onBack }) {
                       {phoneError}
                     </div>
                   )}
-                  {/* Phone hint box */}
                   <div style={{ background: '#FFF8F0', borderRadius: 6,
                                 padding: '6px 8px', marginTop: 6,
                                 border: '1px solid #FFE8D0' }}>
