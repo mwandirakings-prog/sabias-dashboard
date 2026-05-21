@@ -4,7 +4,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
          ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const API = 'https://malawi-sales-backend.onrender.com';
-const COLORS = ['#FF6B35','#FFB800','#2D6A4F','#3E1F00','#E63946','#457B9D','#9B5DE5','#F72585','#4CC9F0','#7B2D8B'];
+const COLORS = ['#FF6B35','#FFB800','#2D6A4F','#3E1F00','#E63946',
+                '#457B9D','#9B5DE5','#F72585','#4CC9F0','#7B2D8B'];
 
 export default function AdminDashboard({ token, user }) {
   const [kpis, setKpis] = useState(null);
@@ -22,13 +23,12 @@ export default function AdminDashboard({ token, user }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
-      const cid = user?.company_id;
       const [k, r, c, m, s] = await Promise.all([
-        axios.get(`${API}/api/kpis?company_id=${cid}`, h),
-        axios.get(`${API}/api/regions?company_id=${cid}`, h),
-        axios.get(`${API}/api/categories?company_id=${cid}`, h),
-        axios.get(`${API}/api/monthly?company_id=${cid}`, h),
-        axios.get(`${API}/api/sales?company_id=${cid}`, h),
+        axios.get(`${API}/api/kpis`, h),
+        axios.get(`${API}/api/regions`, h),
+        axios.get(`${API}/api/categories`, h),
+        axios.get(`${API}/api/monthly`, h),
+        axios.get(`${API}/api/sales`, h),
       ]);
       setKpis(k.data.data);
       setBranches(r.data.data.map(b => ({ ...b, branch: b.region })));
@@ -40,14 +40,13 @@ export default function AdminDashboard({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const margin = kpis?.total_profit && kpis?.total_revenue
     ? ((kpis.total_profit / kpis.total_revenue) * 100).toFixed(1) : 0;
 
-  // Trend filter l
   const getTrendData = () => {
     switch (trendFilter) {
       case 'Daily':
@@ -70,7 +69,7 @@ export default function AdminDashboard({ token, user }) {
         return sales
           .reduce((acc, s) => {
             const d = new Date(s.sale_date);
-            const week = `W${Math.ceil(d.getDate() / 7)}-${d.getMonth() + 1}/${d.getFullYear()}`;
+            const week = `W${Math.ceil(d.getDate()/7)}-${d.getMonth()+1}/${d.getFullYear()}`;
             const found = acc.find(x => x.period === week);
             if (found) {
               found.revenue += parseFloat(s.revenue || 0);
@@ -80,13 +79,12 @@ export default function AdminDashboard({ token, user }) {
                          profit: parseFloat(s.profit || 0) });
             }
             return acc;
-          }, [])
-          .slice(-12);
+          }, []).slice(-12);
       case 'Quarterly':
         return sales
           .reduce((acc, s) => {
             const d = new Date(s.sale_date);
-            const q = `Q${Math.ceil((d.getMonth() + 1) / 3)}-${d.getFullYear()}`;
+            const q = `Q${Math.ceil((d.getMonth()+1)/3)}-${d.getFullYear()}`;
             const found = acc.find(x => x.period === q);
             if (found) {
               found.revenue += parseFloat(s.revenue || 0);
@@ -111,7 +109,7 @@ export default function AdminDashboard({ token, user }) {
             }
             return acc;
           }, []);
-      default: // Monthly
+      default:
         return monthly.map(m => ({
           period: m.month?.slice(5),
           revenue: parseFloat(m.revenue || 0),
@@ -122,7 +120,6 @@ export default function AdminDashboard({ token, user }) {
 
   const trendData = getTrendData();
 
-  // Products filter
   const allProducts = sales
     .reduce((acc, s) => {
       const found = acc.find(x => x.name === s.product);
@@ -151,14 +148,14 @@ export default function AdminDashboard({ token, user }) {
   );
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 80, color: '#3E1F00', fontSize: 18 }}>
+    <div style={{ textAlign: 'center', padding: 80,
+                  color: '#3E1F00', fontSize: 18 }}>
       Loading Admin Dashboard...
     </div>
   );
 
   return (
     <div style={{ fontFamily: 'Arial' }}>
-
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
           Business Overview
@@ -171,7 +168,6 @@ export default function AdminDashboard({ token, user }) {
         </p>
       </div>
 
-      {/* KPI Row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16, marginBottom: 16 }}>
         <KPICard label="Total Revenue"
@@ -188,7 +184,6 @@ export default function AdminDashboard({ token, user }) {
                  color="#457B9D"/>
       </div>
 
-      {/* KPI Row 2 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16, marginBottom: 24 }}>
         <KPICard label="Total Units Sold"
@@ -205,11 +200,8 @@ export default function AdminDashboard({ token, user }) {
                  color="#FF6B35"/>
       </div>
 
-      {/* Charts Row 1 — Branch + Trend */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
-
-        {/* Revenue by Branch */}
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 16 }}>
@@ -228,7 +220,6 @@ export default function AdminDashboard({ token, user }) {
           </ResponsiveContainer>
         </div>
 
-        {/* Revenue & Profit Trend with filter */}
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between',
@@ -268,11 +259,8 @@ export default function AdminDashboard({ token, user }) {
         </div>
       </div>
 
-      {/* Charts Row 2 — Branch Revenue vs Profit + Products */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 24 }}>
-
-        {/* Revenue vs Profit by Branch */}
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 16 }}>
@@ -295,7 +283,6 @@ export default function AdminDashboard({ token, user }) {
           </ResponsiveContainer>
         </div>
 
-        {/* Products chart with filter */}
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between',
@@ -316,7 +303,7 @@ export default function AdminDashboard({ token, user }) {
             </div>
           </div>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
-            {productFilter === 'Least 5' ? 'Lowest' : 'Highest'} revenue generating products
+            {productFilter === 'Least 5' ? 'Lowest' : 'Highest'} revenue products
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
