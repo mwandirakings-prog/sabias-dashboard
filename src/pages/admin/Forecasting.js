@@ -22,10 +22,9 @@ export default function Forecasting({ token, user }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
-      const cid = user?.company_id;
       const [m, s] = await Promise.all([
-        axios.get(`${API}/api/monthly?company_id=${cid}`, h),
-        axios.get(`${API}/api/sales?company_id=${cid}`, h),
+        axios.get(`${API}/api/monthly`, h),
+        axios.get(`${API}/api/sales`, h),
       ]);
       setMonthly(m.data.data);
       setSales(s.data.data);
@@ -34,7 +33,7 @@ export default function Forecasting({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -50,7 +49,6 @@ export default function Forecasting({ token, user }) {
     const sumX2 = revenues.reduce((s, p) => s + p.x * p.x, 0);
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
-
     const forecasts = [];
     for (let i = 1; i <= months; i++) {
       const x = n - 1 + i;
@@ -89,7 +87,8 @@ export default function Forecasting({ token, user }) {
     const curr = parseFloat(m.revenue || 0);
     return {
       month: m.month?.slice(5),
-      growth: prev > 0 ? parseFloat(((curr - prev) / prev * 100).toFixed(1)) : 0
+      growth: prev > 0
+        ? parseFloat(((curr - prev) / prev * 100).toFixed(1)) : 0
     };
   });
 
@@ -121,7 +120,8 @@ export default function Forecasting({ token, user }) {
     ? ((latestRevenue / savedTarget) * 100).toFixed(1) : 0;
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 80, color: '#3E1F00', fontSize: 18 }}>
+    <div style={{ textAlign: 'center', padding: 80,
+                  color: '#3E1F00', fontSize: 18 }}>
       Loading Forecasting...
     </div>
   );
@@ -144,28 +144,33 @@ export default function Forecasting({ token, user }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Latest Month Revenue', value: `MK ${fmt(latestRevenue)}`,
+          { label: 'Latest Month Revenue',
+            value: `MK ${fmt(latestRevenue)}`,
             color: '#FF6B35', sub: 'Most recent' },
-          { label: 'Next Month Forecast', value: `MK ${fmt(nextMonthForecast)}`,
+          { label: 'Next Month Forecast',
+            value: `MK ${fmt(nextMonthForecast)}`,
             color: '#2D6A4F', sub: 'Predicted' },
-          { label: 'Avg Monthly Growth', value: `${avgGrowth}%`,
+          { label: 'Avg Monthly Growth',
+            value: `${avgGrowth}%`,
             color: '#FFB800', sub: 'Historical average' },
           { label: 'Forecast Confidence',
             value: monthly.length >= 3 ? 'High' : 'Low',
-            color: '#457B9D', sub: `Based on ${monthly.length} months` },
+            color: '#457B9D',
+            sub: `Based on ${monthly.length} months` },
         ].map(({ label, value, color, sub }) => (
           <div key={label} style={{ background: 'white', borderRadius: 12,
             padding: 20, borderLeft: `4px solid ${color}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>{label}</div>
+            <div style={{ color: '#888', fontSize: 12,
+                          marginBottom: 8 }}>{label}</div>
             <div style={{ color: '#3E1F00', fontSize: 18,
                           fontWeight: 'bold' }}>{value}</div>
-            <div style={{ color: '#AAA', fontSize: 11, marginTop: 4 }}>{sub}</div>
+            <div style={{ color: '#AAA', fontSize: 11,
+                          marginTop: 4 }}>{sub}</div>
           </div>
         ))}
       </div>
 
-      {/* Revenue Target Tracker */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between',
@@ -183,9 +188,13 @@ export default function Forecasting({ token, user }) {
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               style={{ padding: '8px 12px', borderRadius: 8,
-                       border: '1.5px solid #FFB800', fontSize: 13, width: 180 }}/>
+                       border: '1.5px solid #FFB800', fontSize: 13,
+                       width: 180 }}/>
             <button onClick={() => {
-              if (target) { setSavedTarget(parseFloat(target)); setTarget(''); }
+              if (target) {
+                setSavedTarget(parseFloat(target));
+                setTarget('');
+              }
             }}
               style={{ background: '#FF6B35', border: 'none', color: 'white',
                        padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
@@ -194,14 +203,16 @@ export default function Forecasting({ token, user }) {
             </button>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
+                      gap: 20 }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between',
                           marginBottom: 8 }}>
               <span style={{ color: '#888', fontSize: 13 }}>
                 Current: MK {fmt(latestRevenue)}
               </span>
-              <span style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 13 }}>
+              <span style={{ color: '#3E1F00', fontWeight: 'bold',
+                             fontSize: 13 }}>
                 Target: MK {fmt(savedTarget)}
               </span>
             </div>
@@ -217,38 +228,42 @@ export default function Forecasting({ token, user }) {
               }}/>
             </div>
             <div style={{ textAlign: 'center', marginTop: 6,
-                          color: '#3E1F00', fontWeight: 'bold', fontSize: 14 }}>
+                          color: '#3E1F00', fontWeight: 'bold',
+                          fontSize: 14 }}>
               {targetProgress}% of target achieved
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div style={{ background: '#FFF8F0', borderRadius: 8, padding: 12,
-                          textAlign: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
+                        gap: 12 }}>
+            <div style={{ background: '#FFF8F0', borderRadius: 8,
+                          padding: 12, textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: '#888' }}>Remaining</div>
-              <div style={{ fontSize: 15, fontWeight: 'bold', color: '#E63946' }}>
+              <div style={{ fontSize: 15, fontWeight: 'bold',
+                            color: '#E63946' }}>
                 MK {fmt(Math.max(0, savedTarget - latestRevenue))}
               </div>
             </div>
-            <div style={{ background: '#FFF8F0', borderRadius: 8, padding: 12,
-                          textAlign: 'center' }}>
+            <div style={{ background: '#FFF8F0', borderRadius: 8,
+                          padding: 12, textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: '#888' }}>Status</div>
               <div style={{ fontSize: 15, fontWeight: 'bold',
                 color: parseFloat(targetProgress) >= 100 ? '#2D6A4F' :
-                       parseFloat(targetProgress) >= 70 ? '#FFB800' : '#E63946' }}>
-                {parseFloat(targetProgress) >= 100 ? '🎉 Achieved!' :
-                 parseFloat(targetProgress) >= 70 ? '⚡ On Track' : '⚠ Behind'}
+                       parseFloat(targetProgress) >= 70 ? '#FFB800' : '#E63946'
+              }}>
+                {parseFloat(targetProgress) >= 100 ? 'Achieved!' :
+                 parseFloat(targetProgress) >= 70 ? 'On Track' : 'Behind'}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Forecast Charts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
+          <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                        marginBottom: 4 }}>
             Revenue Forecast — Next 3 Months
           </div>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
@@ -298,7 +313,8 @@ export default function Forecasting({ token, user }) {
 
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
+          <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                        marginBottom: 4 }}>
             6-Month Revenue Projection
           </div>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
@@ -333,7 +349,8 @@ export default function Forecasting({ token, user }) {
               <Legend/>
               <Area type="monotone" dataKey="revenue" name="Actual Revenue"
                     stroke="#FF6B35" fill="url(#actGrad)" strokeWidth={2}/>
-              <Area type="monotone" dataKey="projected" name="Projected Revenue"
+              <Area type="monotone" dataKey="projected"
+                    name="Projected Revenue"
                     stroke="#FFB800" fill="url(#projGrad)"
                     strokeWidth={2} strokeDasharray="5 5"/>
             </AreaChart>
@@ -341,12 +358,12 @@ export default function Forecasting({ token, user }) {
         </div>
       </div>
 
-      {/* Product Demand + Growth Rate */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
+          <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                        marginBottom: 4 }}>
             Top Product Demand Forecast
           </div>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
@@ -357,7 +374,8 @@ export default function Forecasting({ token, user }) {
               margin={{ top: 5, right: 20, left: 70, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5"/>
               <XAxis type="number" tick={{ fontSize: 10 }}/>
-              <YAxis type="category" dataKey="product" tick={{ fontSize: 10 }}/>
+              <YAxis type="category" dataKey="product"
+                     tick={{ fontSize: 10 }}/>
               <Tooltip formatter={(v) => [`${v} units`, 'Units Sold']}/>
               <Bar dataKey="units" name="Units Sold" radius={[0,4,4,0]}>
                 {productDemand.map((_, i) => (
@@ -370,7 +388,8 @@ export default function Forecasting({ token, user }) {
 
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
+          <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                        marginBottom: 4 }}>
             Month-over-Month Growth Rate
           </div>
           <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
@@ -396,14 +415,14 @@ export default function Forecasting({ token, user }) {
         </div>
       </div>
 
-      {/* Forecast Table */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ color: '#3E1F00', fontWeight: 'bold',
                       fontSize: 15, marginBottom: 16 }}>
-          📊 6-Month Detailed Forecast
+          6-Month Detailed Forecast
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse',
+                        fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#3E1F00' }}>
               {['Month','Projected Revenue','Projected Profit',
@@ -423,8 +442,10 @@ export default function Forecasting({ token, user }) {
               const margin = f.revenue > 0
                 ? ((f.profit / f.revenue) * 100).toFixed(1) : 0;
               const confidence = i < 2 ? 'High' : i < 4 ? 'Medium' : 'Low';
-              const confColor = i < 2 ? '#2E7D32' : i < 4 ? '#E65100' : '#C62828';
-              const confBg = i < 2 ? '#E8F5E9' : i < 4 ? '#FFF3E0' : '#FFEBEE';
+              const confColor = i < 2 ? '#2E7D32'
+                : i < 4 ? '#E65100' : '#C62828';
+              const confBg = i < 2 ? '#E8F5E9'
+                : i < 4 ? '#FFF3E0' : '#FFEBEE';
               return (
                 <tr key={i} style={{
                   background: i % 2 === 0 ? '#FFF8F0' : 'white',
