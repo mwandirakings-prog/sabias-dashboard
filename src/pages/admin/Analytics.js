@@ -26,12 +26,11 @@ export default function Analytics({ token, user }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
-      const cid = user?.company_id;
       const [s, m, r, c] = await Promise.all([
-        axios.get(`${API}/api/sales?company_id=${cid}`, h),
-        axios.get(`${API}/api/monthly?company_id=${cid}`, h),
-        axios.get(`${API}/api/regions?company_id=${cid}`, h),
-        axios.get(`${API}/api/categories?company_id=${cid}`, h),
+        axios.get(`${API}/api/sales`, h),
+        axios.get(`${API}/api/monthly`, h),
+        axios.get(`${API}/api/regions`, h),
+        axios.get(`${API}/api/categories`, h),
       ]);
       setSales(s.data.data);
       setMonthly(m.data.data);
@@ -42,11 +41,10 @@ export default function Analytics({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // All products sorted by revenue
   const allProducts = sales
     .reduce((acc, s) => {
       const found = acc.find(x => x.name === s.product);
@@ -72,7 +70,6 @@ export default function Analytics({ token, user }) {
     ? allProducts.slice(0, 10)
     : allProducts.slice(-5);
 
-  // Salesperson leaderboard
   const salespersonData = sales
     .reduce((acc, s) => {
       const found = acc.find(x => x.name === s.salesperson);
@@ -92,7 +89,6 @@ export default function Analytics({ token, user }) {
     }, [])
     .sort((a, b) => b.revenue - a.revenue);
 
-  // Payment method breakdown including Voucher
   const paymentData = sales
     .reduce((acc, s) => {
       const found = acc.find(x => x.name === s.payment);
@@ -110,7 +106,6 @@ export default function Analytics({ token, user }) {
     }, [])
     .sort((a, b) => b.value - a.value);
 
-  // Monthly growth rate
   const monthlyWithGrowth = monthly.map((m, i) => {
     if (i === 0) return { ...m, growth: 0 };
     const prev = parseFloat(monthly[i - 1].revenue || 0);
@@ -119,7 +114,6 @@ export default function Analytics({ token, user }) {
     return { ...m, growth: parseFloat(growth) };
   });
 
-  // Radar data for branches
   const radarData = regions.map(r => ({
     region: r.region,
     revenue: Math.round(parseFloat(r.revenue || 0) / 1000),
@@ -128,7 +122,8 @@ export default function Analytics({ token, user }) {
   }));
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 80, color: '#3E1F00', fontSize: 18 }}>
+    <div style={{ textAlign: 'center', padding: 80,
+                  color: '#3E1F00', fontSize: 18 }}>
       Loading Analytics...
     </div>
   );
@@ -145,7 +140,6 @@ export default function Analytics({ token, user }) {
         </p>
       </div>
 
-      {/* Row 1 — Monthly Revenue Area Chart + Growth */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
 
@@ -213,7 +207,6 @@ export default function Analytics({ token, user }) {
         </div>
       </div>
 
-      {/* Row 2 — Products Filter + Payment Methods */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
 
@@ -279,7 +272,6 @@ export default function Analytics({ token, user }) {
         </div>
       </div>
 
-      {/* Row 3 — Radar Chart + Category Bar */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
 
@@ -332,12 +324,11 @@ export default function Analytics({ token, user }) {
         </div>
       </div>
 
-      {/* Salesperson Leaderboard */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ color: '#3E1F00', fontWeight: 'bold',
                       fontSize: 15, marginBottom: 16 }}>
-          🏆 Salesperson Leaderboard
+          Salesperson Leaderboard
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
