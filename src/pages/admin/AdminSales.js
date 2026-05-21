@@ -22,8 +22,7 @@ export default function AdminSales({ token, user }) {
 
   const fetchSales = useCallback(async () => {
     try {
-      const cid = user?.company_id;
-      const res = await axios.get(`${API}/api/sales?company_id=${cid}`,
+      const res = await axios.get(`${API}/api/sales`,
         { headers: { Authorization: `Bearer ${token}` } });
       setSales(res.data.data);
     } catch (err) {
@@ -31,7 +30,7 @@ export default function AdminSales({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
 
@@ -44,12 +43,13 @@ export default function AdminSales({ token, user }) {
         quantity: parseInt(form.quantity),
         unit_price: parseFloat(form.unit_price),
         unit_cost: parseFloat(form.unit_cost),
-        company_id: user?.company_id,
       }, { headers: { Authorization: `Bearer ${token}` } });
       setSuccessMsg('Sale recorded successfully!');
-      setForm({ sale_date: '', product: '', category: '', region: '',
-                customer: '', quantity: '', unit_price: '', unit_cost: '',
-                salesperson: '', payment: 'Cash' });
+      setForm({
+        sale_date: '', product: '', category: '', region: '',
+        customer: '', quantity: '', unit_price: '', unit_cost: '',
+        salesperson: '', payment: 'Cash'
+      });
       setShowForm(false);
       fetchSales();
       setTimeout(() => setSuccessMsg(''), 3000);
@@ -74,7 +74,6 @@ export default function AdminSales({ token, user }) {
     return matchSearch && matchPayment && matchCategory;
   });
 
-  // Summary stats
   const totalRevenue = filtered.reduce((sum, s) => sum + parseFloat(s.revenue || 0), 0);
   const totalProfit = filtered.reduce((sum, s) => sum + parseFloat(s.profit || 0), 0);
 
@@ -109,7 +108,8 @@ export default function AdminSales({ token, user }) {
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 24 }}>
           <h3 style={{ color: '#3E1F00', marginTop: 0 }}>Record New Sale</h3>
           <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+            <div style={{ display: 'grid',
+                          gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
               {[
                 { label: 'Sale Date', key: 'sale_date', type: 'date' },
                 { label: 'Product Name', key: 'product', type: 'text' },
@@ -169,7 +169,6 @@ export default function AdminSales({ token, user }) {
         </div>
       )}
 
-      {/* Summary KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 16, marginBottom: 16 }}>
         {[
@@ -181,7 +180,8 @@ export default function AdminSales({ token, user }) {
             padding: 16, borderLeft: `4px solid ${color}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>{label}</div>
-            <div style={{ color: '#3E1F00', fontSize: 18, fontWeight: 'bold' }}>{value}</div>
+            <div style={{ color: '#3E1F00', fontSize: 18,
+                          fontWeight: 'bold' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -226,13 +226,15 @@ export default function AdminSales({ token, user }) {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse',
+                            fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#3E1F00' }}>
                   {['Date','Product','Category','Branch','Customer',
                     'Qty','Revenue','Profit','Salesperson','Payment'].map(h => (
                     <th key={h} style={{ padding: '10px 12px', color: '#FFB800',
-                                        textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                                        textAlign: 'left',
+                                        whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -241,12 +243,16 @@ export default function AdminSales({ token, user }) {
                   <tr key={s.id} style={{
                     background: i % 2 === 0 ? '#FFF8F0' : 'white',
                     borderBottom: '1px solid #FFE8D0' }}>
-                    <td style={{ padding: '8px 12px' }}>{s.sale_date?.split('T')[0]}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      {s.sale_date?.split('T')[0]}
+                    </td>
                     <td style={{ padding: '8px 12px', fontWeight: '500',
                                  color: '#3E1F00' }}>{s.product}</td>
                     <td style={{ padding: '8px 12px' }}>{s.category}</td>
                     <td style={{ padding: '8px 12px' }}>{s.region}</td>
-                    <td style={{ padding: '8px 12px' }}>{s.customer || 'Walk-in'}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      {s.customer || 'Walk-in'}
+                    </td>
                     <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                       {fmt(s.quantity)}
                     </td>
