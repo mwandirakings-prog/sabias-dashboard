@@ -35,11 +35,10 @@ export default function SalespersonDashboard({ token, user }) {
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
-      const cid = user?.company_id;
       const h = { headers: { Authorization: `Bearer ${token}` } };
       const [s, inv] = await Promise.all([
-        axios.get(`${API}/api/sales?company_id=${cid}`, h),
-        axios.get(`${API}/api/inventory?company_id=${cid}`, h),
+        axios.get(`${API}/api/sales`, h),
+        axios.get(`${API}/api/inventory`, h),
       ]);
       setSales(s.data.data);
       setInventory(inv.data.data);
@@ -48,7 +47,7 @@ export default function SalespersonDashboard({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -61,9 +60,8 @@ export default function SalespersonDashboard({ token, user }) {
         quantity: parseInt(form.quantity),
         unit_price: parseFloat(form.unit_price),
         unit_cost: parseFloat(form.unit_cost),
-        company_id: user?.company_id,
       }, { headers: { Authorization: `Bearer ${token}` } });
-      setSuccessMsg('✓ Sale submitted successfully!');
+      setSuccessMsg('Sale submitted successfully!');
       setForm({
         sale_date: new Date().toISOString().split('T')[0],
         product: '', category: '',
@@ -106,10 +104,9 @@ export default function SalespersonDashboard({ token, user }) {
         unit_cost: parseFloat(selectedProduct.unit_cost),
         salesperson: user?.name,
         payment: quickForm.payment,
-        company_id: user?.company_id,
       }, { headers: { Authorization: `Bearer ${token}` } });
       setSuccessMsg(
-        `⚡ Quick Sale done! ${quickForm.quantity} x ${selectedProduct.product} — ` +
+        `Quick Sale done! ${quickForm.quantity} x ${selectedProduct.product} — ` +
         `MK ${fmt(rev)} revenue · MK ${fmt(prof)} profit · Date: ${saleDate}`
       );
       setSelectedProduct(null);
@@ -208,7 +205,7 @@ export default function SalespersonDashboard({ token, user }) {
           style={{ background: '#FF6B35', border: 'none', color: 'white',
                    padding: '10px 20px', borderRadius: 8, cursor: 'pointer',
                    fontWeight: 'bold', fontSize: 14 }}>
-          {showForm ? '✕ Close' : '+ New Sale'}
+          {showForm ? 'Close' : '+ New Sale'}
         </button>
       </div>
 
@@ -223,11 +220,10 @@ export default function SalespersonDashboard({ token, user }) {
         <div style={{ background: '#FFEBEE', border: '1px solid #FFCDD2',
                       borderRadius: 8, padding: '12px 16px', marginBottom: 20,
                       color: '#C62828', fontWeight: 'bold', fontSize: 13 }}>
-          ⚠ {errorMsg}
+          {errorMsg}
         </div>
       )}
 
-      {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16, marginBottom: 24 }}>
         <KPICard label="My Total Revenue"
@@ -247,18 +243,16 @@ export default function SalespersonDashboard({ token, user }) {
                  sub={`${mySales.length} total transactions`}/>
       </div>
 
-      {/* Sale Form Panel */}
       {showForm && (
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 24 }}>
 
-          {/* Tab Switcher */}
           <div style={{ display: 'flex', gap: 0, marginBottom: 24,
                         border: '2px solid #FFB800', borderRadius: 10,
                         overflow: 'hidden', width: 'fit-content' }}>
             {[
-              { id: 'quick', label: '⚡ Quick Sell', desc: 'Click product → sell' },
-              { id: 'manual', label: '✏️ Manual Entry', desc: 'Fill form manually' },
+              { id: 'quick', label: 'Quick Sell', desc: 'Click product to sell' },
+              { id: 'manual', label: 'Manual Entry', desc: 'Fill form manually' },
             ].map(tab => (
               <button key={tab.id}
                 onClick={() => {
@@ -282,20 +276,19 @@ export default function SalespersonDashboard({ token, user }) {
             ))}
           </div>
 
-          {/* QUICK SELL MODE */}
           {saleMode === 'quick' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between',
                             alignItems: 'center', marginBottom: 16 }}>
                 <div>
-                  <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 15 }}>
-                    ⚡ Quick Sell — Click a Product
+                  <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                                fontSize: 15 }}>
+                    Quick Sell — Click a Product
                   </div>
                   <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
                     Click any product card to sell instantly
                   </div>
                 </div>
-                {/* Silent date picker */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 11, color: '#888' }}>Sale Date:</span>
                   <input type="date" value={saleDate}
@@ -337,14 +330,13 @@ export default function SalespersonDashboard({ token, user }) {
                           : canSell ? '#FFFDF8' : '#FFF5F5',
                         cursor: canSell ? 'pointer' : 'not-allowed',
                         transition: 'all 0.2s',
-                        boxShadow: isSelected
-                          ? '0 4px 12px rgba(255,107,53,0.25)' : 'none',
                       }}>
                       <div style={{ fontWeight: 'bold', color: '#3E1F00',
                                     fontSize: 13, marginBottom: 4 }}>
                         {p.product}
                       </div>
-                      <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>
+                      <div style={{ fontSize: 11, color: '#888',
+                                    marginBottom: 6 }}>
                         {p.category}
                       </div>
                       <div style={{ fontSize: 13, fontWeight: 'bold',
@@ -360,7 +352,7 @@ export default function SalespersonDashboard({ token, user }) {
                         </span>
                         {isSelected && (
                           <span style={{ color: '#FF6B35', fontSize: 10,
-                                         fontWeight: 'bold' }}>✓ Selected</span>
+                                         fontWeight: 'bold' }}>Selected</span>
                         )}
                       </div>
                     </div>
@@ -450,7 +442,8 @@ export default function SalespersonDashboard({ token, user }) {
                           <div style={{ fontSize: 10, color: '#AAA' }}>Revenue</div>
                           <div style={{ fontSize: 18, fontWeight: 'bold',
                                         color: '#2D6A4F' }}>
-                            MK {fmt(quickForm.quantity * selectedProduct.unit_price)}
+                            MK {fmt(quickForm.quantity *
+                              selectedProduct.unit_price)}
                           </div>
                         </div>
                         <div>
@@ -490,7 +483,7 @@ export default function SalespersonDashboard({ token, user }) {
                                  padding: '12px 32px', borderRadius: 8,
                                  cursor: submitting ? 'not-allowed' : 'pointer',
                                  fontWeight: 'bold', fontSize: 15 }}>
-                        {submitting ? 'Recording...' : '⚡ Record Sale Now'}
+                        {submitting ? 'Recording...' : 'Record Sale Now'}
                       </button>
                       <button type="button"
                         onClick={() => setSelectedProduct(null)}
@@ -508,12 +501,11 @@ export default function SalespersonDashboard({ token, user }) {
             </div>
           )}
 
-          {/* MANUAL ENTRY MODE */}
           {saleMode === 'manual' && (
             <div>
               <div style={{ color: '#3E1F00', fontWeight: 'bold',
                             fontSize: 15, marginBottom: 16 }}>
-                ✏️ Manual Sale Entry
+                Manual Sale Entry
               </div>
               <form onSubmit={handleManualSubmit}>
                 <div style={{ display: 'grid',
@@ -526,8 +518,10 @@ export default function SalespersonDashboard({ token, user }) {
                     { label: 'Customer (optional)', key: 'customer',
                       type: 'text', required: false },
                     { label: 'Quantity', key: 'quantity', type: 'number' },
-                    { label: 'Unit Price (MWK)', key: 'unit_price', type: 'number' },
-                    { label: 'Unit Cost (MWK)', key: 'unit_cost', type: 'number' },
+                    { label: 'Unit Price (MWK)', key: 'unit_price',
+                      type: 'number' },
+                    { label: 'Unit Cost (MWK)', key: 'unit_cost',
+                      type: 'number' },
                     { label: 'Salesperson', key: 'salesperson', type: 'text' },
                   ].map(({ label, key, type, required = true }) => (
                     <div key={key}>
@@ -536,10 +530,11 @@ export default function SalespersonDashboard({ token, user }) {
                         {label}
                       </label>
                       <input type={type} required={required} value={form[key]}
-                        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                        style={{ width: '100%', padding: '8px 10px', borderRadius: 6,
-                                 border: '1px solid #FFB800', fontSize: 13,
-                                 boxSizing: 'border-box' }}/>
+                        onChange={(e) => setForm({
+                          ...form, [key]: e.target.value })}
+                        style={{ width: '100%', padding: '8px 10px',
+                                 borderRadius: 6, border: '1px solid #FFB800',
+                                 fontSize: 13, boxSizing: 'border-box' }}/>
                     </div>
                   ))}
                   <div>
@@ -548,10 +543,11 @@ export default function SalespersonDashboard({ token, user }) {
                       Payment Method
                     </label>
                     <select value={form.payment}
-                      onChange={(e) => setForm({ ...form, payment: e.target.value })}
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6,
-                               border: '1px solid #FFB800', fontSize: 13,
-                               boxSizing: 'border-box' }}>
+                      onChange={(e) => setForm({
+                        ...form, payment: e.target.value })}
+                      style={{ width: '100%', padding: '8px 10px',
+                               borderRadius: 6, border: '1px solid #FFB800',
+                               fontSize: 13, boxSizing: 'border-box' }}>
                       <option>Cash</option>
                       <option>Mobile Money</option>
                       <option>Credit</option>
@@ -566,25 +562,21 @@ export default function SalespersonDashboard({ token, user }) {
                                 borderRadius: 8, padding: '12px 16px',
                                 display: 'flex', gap: 24 }}>
                     <div>
-                      <span style={{ color: '#888', fontSize: 12 }}>Revenue: </span>
+                      <span style={{ color: '#888', fontSize: 12 }}>
+                        Revenue:{' '}
+                      </span>
                       <strong style={{ color: '#2D6A4F' }}>
                         MK {fmt(form.quantity * form.unit_price)}
                       </strong>
                     </div>
                     {form.unit_cost && (
                       <div>
-                        <span style={{ color: '#888', fontSize: 12 }}>Profit: </span>
+                        <span style={{ color: '#888', fontSize: 12 }}>
+                          Profit:{' '}
+                        </span>
                         <strong style={{ color: '#FF6B35' }}>
-                          MK {fmt(form.quantity * (form.unit_price - form.unit_cost))}
-                        </strong>
-                      </div>
-                    )}
-                    {form.unit_cost && form.unit_price && (
-                      <div>
-                        <span style={{ color: '#888', fontSize: 12 }}>Margin: </span>
-                        <strong style={{ color: '#FFB800' }}>
-                          {(((form.unit_price - form.unit_cost) /
-                            form.unit_price) * 100).toFixed(1)}%
+                          MK {fmt(form.quantity *
+                            (form.unit_price - form.unit_cost))}
                         </strong>
                       </div>
                     )}
@@ -593,15 +585,17 @@ export default function SalespersonDashboard({ token, user }) {
 
                 <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
                   <button type="submit" disabled={submitting}
-                    style={{ background: '#FF6B35', border: 'none', color: 'white',
-                             padding: '10px 28px', borderRadius: 6,
-                             cursor: 'pointer', fontWeight: 'bold', fontSize: 14 }}>
+                    style={{ background: '#FF6B35', border: 'none',
+                             color: 'white', padding: '10px 28px',
+                             borderRadius: 6, cursor: 'pointer',
+                             fontWeight: 'bold', fontSize: 14 }}>
                     {submitting ? 'Submitting...' : 'Submit Sale'}
                   </button>
                   <button type="button" onClick={() => setShowForm(false)}
-                    style={{ background: '#3E1F00', border: 'none', color: '#FFB800',
-                             padding: '10px 28px', borderRadius: 6,
-                             cursor: 'pointer', fontWeight: 'bold', fontSize: 14 }}>
+                    style={{ background: '#3E1F00', border: 'none',
+                             color: '#FFB800', padding: '10px 28px',
+                             borderRadius: 6, cursor: 'pointer',
+                             fontWeight: 'bold', fontSize: 14 }}>
                     Cancel
                   </button>
                 </div>
@@ -611,7 +605,6 @@ export default function SalespersonDashboard({ token, user }) {
         </div>
       )}
 
-      {/* My Recent Sales Table */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between',
@@ -625,9 +618,9 @@ export default function SalespersonDashboard({ token, user }) {
               style={{ padding: '8px 12px', borderRadius: 8,
                        border: '1px solid #FFB800', fontSize: 13, width: 220 }}/>
             <button onClick={fetchAll}
-              style={{ padding: '8px 16px', background: '#FF6B35', border: 'none',
-                       borderRadius: 8, color: 'white', cursor: 'pointer',
-                       fontSize: 13 }}>
+              style={{ padding: '8px 16px', background: '#FF6B35',
+                       border: 'none', borderRadius: 8, color: 'white',
+                       cursor: 'pointer', fontSize: 13 }}>
               Refresh
             </button>
           </div>
@@ -646,7 +639,8 @@ export default function SalespersonDashboard({ token, user }) {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse',
+                            fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#3E1F00' }}>
                   {['Date','Product','Category','Branch','Customer',

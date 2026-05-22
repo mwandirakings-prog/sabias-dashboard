@@ -13,9 +13,7 @@ export default function Products({ token, user }) {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [saleForm, setSaleForm] = useState({
-    quantity: '',
-    customer: '',
-    payment: 'Cash',
+    quantity: '', customer: '', payment: 'Cash',
     region: user?.region !== 'all' ? user?.region : '',
   });
 
@@ -24,8 +22,7 @@ export default function Products({ token, user }) {
   const fetchInventory = useCallback(async () => {
     try {
       setLoading(true);
-      const cid = user?.company_id;
-      const res = await axios.get(`${API}/api/inventory?company_id=${cid}`,
+      const res = await axios.get(`${API}/api/inventory`,
         { headers: { Authorization: `Bearer ${token}` } });
       setInventory(res.data.data);
     } catch (err) {
@@ -33,11 +30,12 @@ export default function Products({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchInventory(); }, [fetchInventory]);
 
-  const categories = ['All', ...new Set(inventory.map(i => i.category).filter(Boolean))];
+  const categories = ['All',
+    ...new Set(inventory.map(i => i.category).filter(Boolean))];
 
   const filtered = inventory.filter(p => {
     const matchSearch = search === '' ||
@@ -62,9 +60,7 @@ export default function Products({ token, user }) {
     }
     setSelectedProduct(product);
     setSaleForm({
-      quantity: '1',
-      customer: '',
-      payment: 'Cash',
+      quantity: '1', customer: '', payment: 'Cash',
       region: user?.region !== 'all' ? user?.region : '',
     });
     setSuccessMsg('');
@@ -91,14 +87,12 @@ export default function Products({ token, user }) {
         unit_cost: parseFloat(selectedProduct.unit_cost),
         salesperson: user?.name,
         payment: saleForm.payment,
-        company_id: user?.company_id,
       }, { headers: { Authorization: `Bearer ${token}` } });
-
       const revenue = saleForm.quantity * selectedProduct.unit_price;
       const profit = saleForm.quantity *
         (selectedProduct.unit_price - selectedProduct.unit_cost);
       setSuccessMsg(
-        `✓ Sale recorded! ${saleForm.quantity} x ${selectedProduct.product} — ` +
+        `Sale recorded! ${saleForm.quantity} x ${selectedProduct.product} — ` +
         `Revenue: MK ${fmt(revenue)} · Profit: MK ${fmt(profit)}`
       );
       setSelectedProduct(null);
@@ -114,11 +108,11 @@ export default function Products({ token, user }) {
   const revenue = selectedProduct
     ? saleForm.quantity * selectedProduct.unit_price : 0;
   const profit = selectedProduct
-    ? saleForm.quantity * (selectedProduct.unit_price - selectedProduct.unit_cost) : 0;
+    ? saleForm.quantity * (selectedProduct.unit_price -
+        selectedProduct.unit_cost) : 0;
 
   return (
     <div style={{ fontFamily: 'Arial' }}>
-
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
           Product Catalogue
@@ -131,7 +125,6 @@ export default function Products({ token, user }) {
         </p>
       </div>
 
-      {/* Messages */}
       {successMsg && (
         <div style={{ background: '#E8F5E9', border: '1px solid #A5D6A7',
                       borderRadius: 8, padding: '12px 16px', marginBottom: 20,
@@ -143,36 +136,32 @@ export default function Products({ token, user }) {
         <div style={{ background: '#FFEBEE', border: '1px solid #FFCDD2',
                       borderRadius: 8, padding: '12px 16px', marginBottom: 20,
                       color: '#C62828', fontWeight: 'bold', fontSize: 13 }}>
-          ⚠ {errorMsg}
+          {errorMsg}
         </div>
       )}
 
-      {/* Quick Sale Form — shows when product selected */}
       {selectedProduct && (
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
                       boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                      marginBottom: 24,
-                      border: '2px solid #FF6B35' }}>
+                      marginBottom: 24, border: '2px solid #FF6B35' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between',
                         alignItems: 'center', marginBottom: 16 }}>
             <div>
               <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 16 }}>
-                ⚡ Quick Sale — {selectedProduct.product}
+                Quick Sale — {selectedProduct.product}
               </div>
               <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
                 Unit Price: MK {fmt(selectedProduct.unit_price)} ·
-                In Stock: {fmt(selectedProduct.quantity_in_stock)} units ·
-                Category: {selectedProduct.category}
+                In Stock: {fmt(selectedProduct.quantity_in_stock)} units
               </div>
             </div>
             <button onClick={() => setSelectedProduct(null)}
               style={{ background: '#FFEBEE', border: 'none', color: '#C62828',
                        padding: '6px 14px', borderRadius: 6, cursor: 'pointer',
                        fontWeight: 'bold', fontSize: 13 }}>
-              ✕ Cancel
+              Cancel
             </button>
           </div>
-
           <form onSubmit={handleSell}>
             <div style={{ display: 'grid',
                           gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
@@ -184,7 +173,8 @@ export default function Products({ token, user }) {
                 <input type="number" required min="1"
                   max={selectedProduct.quantity_in_stock}
                   value={saleForm.quantity}
-                  onChange={(e) => setSaleForm({...saleForm, quantity: e.target.value})}
+                  onChange={(e) => setSaleForm({
+                    ...saleForm, quantity: e.target.value })}
                   style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
                            border: '1.5px solid #FF6B35', fontSize: 14,
                            boxSizing: 'border-box', fontWeight: 'bold' }}/>
@@ -195,7 +185,8 @@ export default function Products({ token, user }) {
                   Customer (optional)
                 </label>
                 <input type="text" value={saleForm.customer}
-                  onChange={(e) => setSaleForm({...saleForm, customer: e.target.value})}
+                  onChange={(e) => setSaleForm({
+                    ...saleForm, customer: e.target.value })}
                   placeholder="e.g. Chisomo Store"
                   style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
                            border: '1.5px solid #FFB800', fontSize: 13,
@@ -207,7 +198,8 @@ export default function Products({ token, user }) {
                   Branch/Region *
                 </label>
                 <input type="text" required value={saleForm.region}
-                  onChange={(e) => setSaleForm({...saleForm, region: e.target.value})}
+                  onChange={(e) => setSaleForm({
+                    ...saleForm, region: e.target.value })}
                   placeholder="e.g. Lilongwe"
                   style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
                            border: '1.5px solid #FFB800', fontSize: 13,
@@ -219,7 +211,8 @@ export default function Products({ token, user }) {
                   Payment Method *
                 </label>
                 <select value={saleForm.payment}
-                  onChange={(e) => setSaleForm({...saleForm, payment: e.target.value})}
+                  onChange={(e) => setSaleForm({
+                    ...saleForm, payment: e.target.value })}
                   style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
                            border: '1.5px solid #FFB800', fontSize: 13,
                            boxSizing: 'border-box' }}>
@@ -231,56 +224,49 @@ export default function Products({ token, user }) {
                 </select>
               </div>
             </div>
-
-            {/* Live Preview */}
             {saleForm.quantity > 0 && (
               <div style={{ marginTop: 16, background: '#FFF8F0', borderRadius: 8,
                             padding: '14px 18px', display: 'flex', gap: 32,
                             border: '1px solid #FFE8D0' }}>
                 <div>
                   <div style={{ fontSize: 11, color: '#AAA' }}>Revenue</div>
-                  <div style={{ fontSize: 18, fontWeight: 'bold', color: '#2D6A4F' }}>
+                  <div style={{ fontSize: 18, fontWeight: 'bold',
+                                color: '#2D6A4F' }}>
                     MK {fmt(revenue)}
                   </div>
                 </div>
                 <div>
                   <div style={{ fontSize: 11, color: '#AAA' }}>Profit</div>
-                  <div style={{ fontSize: 18, fontWeight: 'bold', color: '#FF6B35' }}>
+                  <div style={{ fontSize: 18, fontWeight: 'bold',
+                                color: '#FF6B35' }}>
                     MK {fmt(profit)}
                   </div>
                 </div>
                 <div>
                   <div style={{ fontSize: 11, color: '#AAA' }}>Margin</div>
-                  <div style={{ fontSize: 18, fontWeight: 'bold', color: '#FFB800' }}>
+                  <div style={{ fontSize: 18, fontWeight: 'bold',
+                                color: '#FFB800' }}>
                     {selectedProduct.unit_price > 0
                       ? (((selectedProduct.unit_price - selectedProduct.unit_cost) /
                           selectedProduct.unit_price) * 100).toFixed(1) : 0}%
                   </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 11, color: '#AAA' }}>Units</div>
-                  <div style={{ fontSize: 18, fontWeight: 'bold', color: '#457B9D' }}>
-                    {saleForm.quantity}
-                  </div>
-                </div>
               </div>
             )}
-
             <div style={{ marginTop: 16 }}>
               <button type="submit" disabled={submitting}
                 style={{ background: submitting ? '#AAA' : '#FF6B35',
-                         border: 'none', color: 'white',
-                         padding: '12px 32px', borderRadius: 8,
+                         border: 'none', color: 'white', padding: '12px 32px',
+                         borderRadius: 8,
                          cursor: submitting ? 'not-allowed' : 'pointer',
                          fontWeight: 'bold', fontSize: 15 }}>
-                {submitting ? 'Recording Sale...' : '⚡ Record Sale Now'}
+                {submitting ? 'Recording Sale...' : 'Record Sale Now'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Summary KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 16, marginBottom: 24 }}>
         {[
@@ -299,10 +285,8 @@ export default function Products({ token, user }) {
         ))}
       </div>
 
-      {/* Product Grid */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-
         <div style={{ display: 'flex', gap: 10, marginBottom: 20,
                       flexWrap: 'wrap', alignItems: 'center' }}>
           <input placeholder="Search product, category or supplier..."
@@ -316,13 +300,13 @@ export default function Products({ token, user }) {
             {categories.map(c => <option key={c}>{c}</option>)}
           </select>
           <button onClick={fetchInventory}
-            style={{ padding: '8px 16px', background: '#FF6B35',
-                     border: 'none', borderRadius: 8, color: 'white',
-                     cursor: 'pointer', fontSize: 13 }}>
+            style={{ padding: '8px 16px', background: '#FF6B35', border: 'none',
+                     borderRadius: 8, color: 'white', cursor: 'pointer',
+                     fontSize: 13 }}>
             Refresh
           </button>
           <div style={{ color: '#888', fontSize: 12, marginLeft: 'auto' }}>
-            💡 Click any product card to sell instantly
+            Click any product card to sell instantly
           </div>
         </div>
 
@@ -334,7 +318,7 @@ export default function Products({ token, user }) {
           <div style={{ textAlign: 'center', padding: 60 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
             <div style={{ color: '#888' }}>
-              No products found. Admin needs to add products to inventory first.
+              No products found.
             </div>
           </div>
         ) : (
@@ -345,19 +329,15 @@ export default function Products({ token, user }) {
               const isSelected = selectedProduct?.id === p.id;
               const canSell = p.quantity_in_stock > 0;
               return (
-                <div key={i}
-                  onClick={() => handleSelectProduct(p)}
+                <div key={i} onClick={() => handleSelectProduct(p)}
                   style={{
-                    border: isSelected
-                      ? '2px solid #FF6B35'
+                    border: isSelected ? '2px solid #FF6B35'
                       : `1px solid ${canSell ? '#FFE8D0' : '#FFCDD2'}`,
                     borderRadius: 10, padding: 16,
                     background: isSelected ? '#FFF3EE' :
                                 canSell ? '#FFFDF8' : '#FFF5F5',
                     cursor: canSell ? 'pointer' : 'not-allowed',
                     transition: 'all 0.2s ease',
-                    boxShadow: isSelected
-                      ? '0 4px 12px rgba(255,107,53,0.2)' : 'none',
                   }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between',
                                 alignItems: 'flex-start', marginBottom: 10 }}>
@@ -372,19 +352,19 @@ export default function Products({ token, user }) {
                       {status.label}
                     </span>
                   </div>
-
                   <span style={{ background: '#FFF3E0', color: '#E65100',
                                  padding: '2px 8px', borderRadius: 10,
                                  fontSize: 11, marginBottom: 10,
                                  display: 'inline-block' }}>
                     {p.category}
                   </span>
-
                   <div style={{ display: 'grid',
                                 gridTemplateColumns: '1fr 1fr', gap: 8,
                                 marginTop: 8 }}>
                     <div>
-                      <div style={{ fontSize: 10, color: '#AAA' }}>Selling Price</div>
+                      <div style={{ fontSize: 10, color: '#AAA' }}>
+                        Selling Price
+                      </div>
                       <div style={{ fontSize: 14, fontWeight: 'bold',
                                     color: '#2D6A4F' }}>
                         MK {fmt(p.unit_price)}
@@ -413,13 +393,12 @@ export default function Products({ token, user }) {
                       </div>
                     </div>
                   </div>
-
                   {canSell && (
                     <div style={{ marginTop: 12, paddingTop: 10,
                                   borderTop: '1px solid #FFE8D0',
                                   color: '#FF6B35', fontSize: 12,
                                   fontWeight: 'bold', textAlign: 'center' }}>
-                      {isSelected ? '✓ Selected — Fill form above' : '👆 Click to Sell'}
+                      {isSelected ? 'Selected — Fill form above' : 'Click to Sell'}
                     </div>
                   )}
                 </div>

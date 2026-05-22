@@ -17,8 +17,7 @@ export default function Profile({ token, user }) {
   const fetchSales = useCallback(async () => {
     try {
       setLoading(true);
-      const cid = user?.company_id;
-      const res = await axios.get(`${API}/api/sales?company_id=${cid}`,
+      const res = await axios.get(`${API}/api/sales`,
         { headers: { Authorization: `Bearer ${token}` } });
       setSales(res.data.data);
     } catch (err) {
@@ -26,7 +25,7 @@ export default function Profile({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
 
@@ -45,7 +44,6 @@ export default function Profile({ token, user }) {
     showSuccess('Password changed successfully!');
   };
 
-  // My stats only
   const mySales = sales.filter(s =>
     s.salesperson?.toLowerCase() === user?.name?.toLowerCase());
   const myRevenue = mySales.reduce((sum, s) =>
@@ -57,42 +55,39 @@ export default function Profile({ token, user }) {
   const myMargin = myRevenue > 0
     ? ((myProfit / myRevenue) * 100).toFixed(1) : 0;
 
-  const productMap = mySales.reduce((acc, s) => {
-    if (!acc[s.product]) acc[s.product] = 0;
-    acc[s.product] += parseFloat(s.revenue || 0);
-    return acc;
-  }, {});
-  const topProduct = Object.entries(productMap)
-    .sort((a, b) => b[1] - a[1])[0];
+  const topProduct = Object.entries(
+    mySales.reduce((acc, s) => {
+      if (!acc[s.product]) acc[s.product] = 0;
+      acc[s.product] += parseFloat(s.revenue || 0);
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1])[0];
 
-  const regionMap = mySales.reduce((acc, s) => {
-    if (!acc[s.region]) acc[s.region] = 0;
-    acc[s.region] += parseFloat(s.revenue || 0);
-    return acc;
-  }, {});
-  const bestRegion = Object.entries(regionMap)
-    .sort((a, b) => b[1] - a[1])[0];
+  const bestRegion = Object.entries(
+    mySales.reduce((acc, s) => {
+      if (!acc[s.region]) acc[s.region] = 0;
+      acc[s.region] += parseFloat(s.revenue || 0);
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1])[0];
 
   const tabs = [
-    { id: 'profile', label: '👤 My Profile' },
-    { id: 'performance', label: '📊 My Performance' },
-    { id: 'password', label: '🔒 Change Password' },
+    { id: 'profile', label: 'My Profile' },
+    { id: 'performance', label: 'My Performance' },
+    { id: 'password', label: 'Change Password' },
   ];
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 80, color: '#3E1F00',
-                  fontSize: 18 }}>
+    <div style={{ textAlign: 'center', padding: 80,
+                  color: '#3E1F00', fontSize: 18 }}>
       Loading Profile...
     </div>
   );
 
   return (
     <div style={{ fontFamily: 'Arial' }}>
-
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
-          My Profile
-        </h2>
+        <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>My Profile</h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
           {user?.company || 'Your Company'} · Salesperson Portal
         </p>
@@ -107,8 +102,6 @@ export default function Profile({ token, user }) {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 20 }}>
-
-        {/* Sidebar */}
         <div>
           <div style={{ background: 'white', borderRadius: 12, padding: 20,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
@@ -122,8 +115,9 @@ export default function Profile({ token, user }) {
             </div>
             <div style={{ fontWeight: 'bold', color: '#3E1F00',
                           fontSize: 15 }}>{user?.name}</div>
-            <div style={{ color: '#888', fontSize: 12,
-                          marginTop: 4 }}>{user?.email}</div>
+            <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>
+              {user?.email}
+            </div>
             <div style={{ color: '#FF6B35', fontSize: 12, marginTop: 4,
                           fontWeight: 'bold' }}>
               {user?.company || 'Your Company'}
@@ -136,7 +130,7 @@ export default function Profile({ token, user }) {
               {user?.role}
             </span>
             <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
-              📍 {user?.region === 'all' ? 'All Branches' : user?.region}
+              {user?.region === 'all' ? 'All Branches' : user?.region}
             </div>
           </div>
 
@@ -157,19 +151,14 @@ export default function Profile({ token, user }) {
           </div>
         </div>
 
-        {/* Content */}
         <div style={{ background: 'white', borderRadius: 12, padding: 28,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
 
-          {/* Profile Tab */}
           {activeTab === 'profile' && (
             <div>
-              <h3 style={{ color: '#3E1F00', marginTop: 0 }}>
-                My Information
-              </h3>
-              <div style={{ display: 'grid',
-                            gridTemplateColumns: '1fr 1fr', gap: 16,
-                            marginBottom: 24 }}>
+              <h3 style={{ color: '#3E1F00', marginTop: 0 }}>My Information</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
+                            gap: 16, marginBottom: 24 }}>
                 {[
                   { label: 'Full Name', value: user?.name },
                   { label: 'Email Address', value: user?.email },
@@ -178,22 +167,15 @@ export default function Profile({ token, user }) {
                   { label: 'Branch', value: user?.region === 'all'
                     ? 'All Branches' : user?.region },
                   { label: 'Total Sales Made', value: mySales.length },
-                  { label: 'Total Revenue',
-                    value: `MK ${fmt(myRevenue)}` },
-                  { label: 'Total Profit',
-                    value: `MK ${fmt(myProfit)}` },
+                  { label: 'Total Revenue', value: `MK ${fmt(myRevenue)}` },
+                  { label: 'Total Profit', value: `MK ${fmt(myProfit)}` },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ background: '#FFF8F0',
-                    borderRadius: 10, padding: 16,
-                    border: '1px solid #FFE8D0' }}>
+                    borderRadius: 10, padding: 16, border: '1px solid #FFE8D0' }}>
                     <div style={{ fontSize: 11, color: '#888',
                                   marginBottom: 4 }}>{label}</div>
                     <div style={{ fontWeight: 'bold', color: '#3E1F00',
-                                  fontSize: 14,
-                                  textTransform: label === 'Role'
-                                    ? 'capitalize' : 'none' }}>
-                      {value}
-                    </div>
+                                  fontSize: 14 }}>{value}</div>
                   </div>
                 ))}
               </div>
@@ -232,11 +214,11 @@ export default function Profile({ token, user }) {
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{
                             background: s.payment === 'Cash' ? '#E8F5E9' :
-                                        s.payment === 'Mobile Money' ? '#E3F2FD' :
-                                        s.payment === 'Voucher' ? '#F3E5F5' : '#FFF3E0',
+                              s.payment === 'Mobile Money' ? '#E3F2FD' :
+                              s.payment === 'Voucher' ? '#F3E5F5' : '#FFF3E0',
                             color: s.payment === 'Cash' ? '#2E7D32' :
-                                   s.payment === 'Mobile Money' ? '#1565C0' :
-                                   s.payment === 'Voucher' ? '#6A1B9A' : '#E65100',
+                              s.payment === 'Mobile Money' ? '#1565C0' :
+                              s.payment === 'Voucher' ? '#6A1B9A' : '#E65100',
                             padding: '2px 8px', borderRadius: 10, fontSize: 11
                           }}>
                             {s.payment}
@@ -250,35 +232,27 @@ export default function Profile({ token, user }) {
             </div>
           )}
 
-          {/* Performance Tab */}
           {activeTab === 'performance' && (
             <div>
-              <h3 style={{ color: '#3E1F00', marginTop: 0 }}>
-                My Performance
-              </h3>
-              <div style={{ display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
+              <h3 style={{ color: '#3E1F00', marginTop: 0 }}>My Performance</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
                             gap: 16, marginBottom: 24 }}>
                 {[
                   { label: 'Total Transactions', value: mySales.length,
                     color: '#FF6B35', icon: '🧾' },
-                  { label: 'Total Revenue',
-                    value: `MK ${fmt(myRevenue)}`,
+                  { label: 'Total Revenue', value: `MK ${fmt(myRevenue)}`,
                     color: '#2D6A4F', icon: '💰' },
-                  { label: 'Total Profit',
-                    value: `MK ${fmt(myProfit)}`,
+                  { label: 'Total Profit', value: `MK ${fmt(myProfit)}`,
                     color: '#FFB800', icon: '📈' },
                   { label: 'Profit Margin', value: `${myMargin}%`,
                     color: '#457B9D', icon: '📊' },
                   { label: 'Units Sold', value: fmt(myUnits),
                     color: '#9B5DE5', icon: '📦' },
-                  { label: 'Top Product',
-                    value: topProduct?.[0] || 'N/A',
+                  { label: 'Top Product', value: topProduct?.[0] || 'N/A',
                     color: '#E63946', icon: '🥇' },
                 ].map(({ label, value, color, icon }) => (
-                  <div key={label} style={{ background: 'white',
-                    borderRadius: 12, padding: 20,
-                    borderLeft: `4px solid ${color}`,
+                  <div key={label} style={{ background: 'white', borderRadius: 12,
+                    padding: 20, borderLeft: `4px solid ${color}`,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
                     <div style={{ color: '#888', fontSize: 12,
@@ -294,7 +268,7 @@ export default function Profile({ token, user }) {
                               padding: 20, color: 'white', marginBottom: 16 }}>
                   <div style={{ color: '#FFB800', fontWeight: 'bold',
                                 fontSize: 15, marginBottom: 8 }}>
-                    🌍 Best Performing Branch
+                    Best Performing Branch
                   </div>
                   <div style={{ fontSize: 22, fontWeight: 'bold' }}>
                     {bestRegion[0]}
@@ -305,7 +279,7 @@ export default function Profile({ token, user }) {
                 </div>
               )}
 
-              <h3 style={{ color: '#3E1F00' }}>🏅 Achievement Badges</h3>
+              <h3 style={{ color: '#3E1F00' }}>Achievement Badges</h3>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {[
                   { label: 'First Sale', earned: mySales.length >= 1,
@@ -332,7 +306,7 @@ export default function Profile({ token, user }) {
                     {earned && (
                       <div style={{ color: '#2E7D32', fontSize: 10,
                                     fontWeight: 'bold', marginTop: 4 }}>
-                        ✓ Earned!
+                        Earned!
                       </div>
                     )}
                   </div>
@@ -341,12 +315,9 @@ export default function Profile({ token, user }) {
             </div>
           )}
 
-          {/* Password Tab */}
           {activeTab === 'password' && (
             <div>
-              <h3 style={{ color: '#3E1F00', marginTop: 0 }}>
-                Change Password
-              </h3>
+              <h3 style={{ color: '#3E1F00', marginTop: 0 }}>Change Password</h3>
               <form onSubmit={handlePasswordSave} style={{ maxWidth: 400 }}>
                 {[
                   { label: 'Current Password', key: 'current' },
@@ -357,8 +328,7 @@ export default function Profile({ token, user }) {
                     <label style={{ fontSize: 11, color: '#555',
                                     fontWeight: 'bold', display: 'block',
                                     marginBottom: 6 }}>{label}</label>
-                    <input type="password" required
-                      value={passwords[key]}
+                    <input type="password" required value={passwords[key]}
                       onChange={(e) => setPasswords({
                         ...passwords, [key]: e.target.value })}
                       style={{ width: '100%', padding: '10px 12px',
@@ -366,17 +336,10 @@ export default function Profile({ token, user }) {
                                fontSize: 13, boxSizing: 'border-box' }}/>
                   </div>
                 ))}
-                <div style={{ background: '#FFF8F0', borderRadius: 8,
-                              padding: 12, marginBottom: 16,
-                              fontSize: 12, color: '#888' }}>
-                  💡 Password must be at least 8 characters with
-                  uppercase and numbers
-                </div>
                 <button type="submit"
-                  style={{ background: '#FF6B35', border: 'none',
-                           color: 'white', padding: '10px 28px',
-                           borderRadius: 8, cursor: 'pointer',
-                           fontWeight: 'bold', fontSize: 14 }}>
+                  style={{ background: '#FF6B35', border: 'none', color: 'white',
+                           padding: '10px 28px', borderRadius: 8,
+                           cursor: 'pointer', fontWeight: 'bold', fontSize: 14 }}>
                   Change Password
                 </button>
               </form>
