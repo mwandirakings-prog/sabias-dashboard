@@ -21,8 +21,7 @@ export default function UserManagement({ token, user }) {
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const cid = user?.company_id;
-      const res = await axios.get(`${API}/api/users?company_id=${cid}`,
+      const res = await axios.get(`${API}/api/users`,
         { headers: { Authorization: `Bearer ${token}` } });
       setUsers(res.data.data);
     } catch (err) {
@@ -30,7 +29,7 @@ export default function UserManagement({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
@@ -47,8 +46,11 @@ export default function UserManagement({ token, user }) {
         setSuccessMsg('User updated successfully!');
       } else {
         await axios.post(`${API}/api/users`, {
-          ...form,
-          company_id: user?.company_id,
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          role: form.role,
+          region: form.region,
         }, h);
         setSuccessMsg('User added successfully!');
       }
@@ -165,7 +167,8 @@ export default function UserManagement({ token, user }) {
           <div key={label} style={{ background: 'white', borderRadius: 12,
             padding: 20, borderLeft: `4px solid ${color}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>{label}</div>
+            <div style={{ color: '#888', fontSize: 12,
+                          marginBottom: 8 }}>{label}</div>
             <div style={{ color: '#3E1F00', fontSize: 24,
                           fontWeight: 'bold' }}>{value}</div>
           </div>
@@ -174,7 +177,8 @@ export default function UserManagement({ token, user }) {
 
       {showForm && (
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 24 }}>
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      marginBottom: 24 }}>
           <h3 style={{ color: '#3E1F00', marginTop: 0 }}>
             {editUser ? `Edit User — ${editUser.name}` : 'Add New User'}
           </h3>
@@ -182,8 +186,9 @@ export default function UserManagement({ token, user }) {
             <div style={{ display: 'grid',
                           gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
               <div>
-                <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                                display: 'block', marginBottom: 6 }}>
+                <label style={{ fontSize: 11, color: '#555',
+                                fontWeight: 'bold', display: 'block',
+                                marginBottom: 6 }}>
                   Full Name *
                 </label>
                 <input type="text" required value={form.name}
@@ -195,8 +200,9 @@ export default function UserManagement({ token, user }) {
               </div>
               {!editUser && (
                 <div>
-                  <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                                  display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 11, color: '#555',
+                                  fontWeight: 'bold', display: 'block',
+                                  marginBottom: 6 }}>
                     Email Address *
                   </label>
                   <input type="email" required value={form.email}
@@ -209,8 +215,9 @@ export default function UserManagement({ token, user }) {
               )}
               {!editUser && (
                 <div>
-                  <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                                  display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 11, color: '#555',
+                                  fontWeight: 'bold', display: 'block',
+                                  marginBottom: 6 }}>
                     Password *
                   </label>
                   <input type="password" required value={form.password}
@@ -222,8 +229,9 @@ export default function UserManagement({ token, user }) {
                 </div>
               )}
               <div>
-                <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                                display: 'block', marginBottom: 6 }}>
+                <label style={{ fontSize: 11, color: '#555',
+                                fontWeight: 'bold', display: 'block',
+                                marginBottom: 6 }}>
                   Role *
                 </label>
                 <select required value={form.role}
@@ -237,8 +245,9 @@ export default function UserManagement({ token, user }) {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                                display: 'block', marginBottom: 6 }}>
+                <label style={{ fontSize: 11, color: '#555',
+                                fontWeight: 'bold', display: 'block',
+                                marginBottom: 6 }}>
                   Branch *
                 </label>
                 <select required value={form.region}
@@ -260,7 +269,8 @@ export default function UserManagement({ token, user }) {
                 style={{ background: '#FF6B35', border: 'none', color: 'white',
                          padding: '10px 28px', borderRadius: 8, cursor: 'pointer',
                          fontWeight: 'bold', fontSize: 14 }}>
-                {submitting ? 'Saving...' : editUser ? 'Update User' : 'Add User'}
+                {submitting ? 'Saving...'
+                  : editUser ? 'Update User' : 'Add User'}
               </button>
               <button type="button"
                 onClick={() => { setShowForm(false); setEditUser(null); }}
@@ -302,7 +312,10 @@ export default function UserManagement({ token, user }) {
                 {submitting ? 'Resetting...' : 'Reset Password'}
               </button>
               <button type="button"
-                onClick={() => { setShowPasswordForm(false); setPasswordUser(null); }}
+                onClick={() => {
+                  setShowPasswordForm(false);
+                  setPasswordUser(null);
+                }}
                 style={{ background: '#3E1F00', border: 'none', color: '#FFB800',
                          padding: '10px 28px', borderRadius: 8, cursor: 'pointer',
                          fontWeight: 'bold' }}>
@@ -334,7 +347,8 @@ export default function UserManagement({ token, user }) {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse',
+                            fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#3E1F00' }}>
                   {['Name','Email','Role','Branch','Status',
@@ -353,12 +367,14 @@ export default function UserManagement({ token, user }) {
                       borderBottom: '1px solid #FFE8D0' }}>
                       <td style={{ padding: '10px 12px', fontWeight: '600',
                                    color: '#3E1F00' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 32, height: 32, borderRadius: '50%',
+                        <div style={{ display: 'flex', alignItems: 'center',
+                                      gap: 8 }}>
+                          <div style={{ width: 32, height: 32,
+                                        borderRadius: '50%',
                                         background: '#FF6B35', color: 'white',
                                         display: 'flex', alignItems: 'center',
-                                        justifyContent: 'center', fontWeight: 'bold',
-                                        fontSize: 13 }}>
+                                        justifyContent: 'center',
+                                        fontWeight: 'bold', fontSize: 13 }}>
                             {u.name?.charAt(0).toUpperCase()}
                           </div>
                           {u.name}
@@ -381,8 +397,8 @@ export default function UserManagement({ token, user }) {
                         <span style={{
                           background: u.active ? '#E8F5E9' : '#FFEBEE',
                           color: u.active ? '#2E7D32' : '#C62828',
-                          padding: '3px 10px', borderRadius: 10, fontSize: 11,
-                          fontWeight: 'bold' }}>
+                          padding: '3px 10px', borderRadius: 10,
+                          fontSize: 11, fontWeight: 'bold' }}>
                           {u.active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -401,7 +417,8 @@ export default function UserManagement({ token, user }) {
                           <button onClick={() => {
                             setPasswordUser(u);
                             setShowPasswordForm(true);
-                            setShowForm(false); }}
+                            setShowForm(false);
+                          }}
                             style={{ background: '#E3F2FD', border: 'none',
                                      color: '#1565C0', padding: '4px 8px',
                                      borderRadius: 5, cursor: 'pointer',
