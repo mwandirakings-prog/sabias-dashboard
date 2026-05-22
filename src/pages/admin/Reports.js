@@ -20,10 +20,9 @@ export default function Reports({ token, user }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
-      const cid = user?.company_id;
       const [s, inv] = await Promise.all([
-        axios.get(`${API}/api/sales?company_id=${cid}`, h),
-        axios.get(`${API}/api/inventory?company_id=${cid}`, h),
+        axios.get(`${API}/api/sales`, h),
+        axios.get(`${API}/api/inventory`, h),
       ]);
       setSales(s.data.data);
       setInventory(inv.data.data);
@@ -32,25 +31,32 @@ export default function Reports({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const filteredSales = sales.filter(s => {
     const matchRegion = filterRegion === 'All' || s.region === filterRegion;
-    const matchCategory = filterCategory === 'All' || s.category === filterCategory;
+    const matchCategory = filterCategory === 'All' ||
+      s.category === filterCategory;
     const matchFrom = !dateFrom || s.sale_date?.split('T')[0] >= dateFrom;
     const matchTo = !dateTo || s.sale_date?.split('T')[0] <= dateTo;
     return matchRegion && matchCategory && matchFrom && matchTo;
   });
 
-  const uniqueRegions = ['All', ...new Set(sales.map(s => s.region).filter(Boolean))];
-  const uniqueCategories = ['All', ...new Set(sales.map(s => s.category).filter(Boolean))];
+  const uniqueRegions = ['All',
+    ...new Set(sales.map(s => s.region).filter(Boolean))];
+  const uniqueCategories = ['All',
+    ...new Set(sales.map(s => s.category).filter(Boolean))];
 
-  const totalRevenue = filteredSales.reduce((sum, s) => sum + parseFloat(s.revenue || 0), 0);
-  const totalProfit = filteredSales.reduce((sum, s) => sum + parseFloat(s.profit || 0), 0);
-  const totalUnits = filteredSales.reduce((sum, s) => sum + parseInt(s.quantity || 0), 0);
-  const margin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
+  const totalRevenue = filteredSales.reduce(
+    (sum, s) => sum + parseFloat(s.revenue || 0), 0);
+  const totalProfit = filteredSales.reduce(
+    (sum, s) => sum + parseFloat(s.profit || 0), 0);
+  const totalUnits = filteredSales.reduce(
+    (sum, s) => sum + parseInt(s.quantity || 0), 0);
+  const margin = totalRevenue > 0
+    ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
 
   const exportToCSV = (data, filename, headers, rowFn) => {
     setExporting(filename);
@@ -72,7 +78,8 @@ export default function Reports({ token, user }) {
       filteredSales,
       `SABIAS_Sales_Report_${new Date().toISOString().split('T')[0]}.csv`,
       ['ID','Date','Product','Category','Region','Customer',
-       'Quantity','Unit Price','Revenue','Profit','Margin','Salesperson','Payment'],
+       'Quantity','Unit Price','Revenue','Profit','Margin',
+       'Salesperson','Payment'],
       (s) => [
         s.id, s.sale_date?.split('T')[0], s.product, s.category,
         s.region, s.customer || 'Walk-in', s.quantity,
@@ -123,7 +130,6 @@ export default function Reports({ token, user }) {
     );
   };
 
-  // Print only the report preview table
   const printReport = () => {
     const printContent = printRef.current.innerHTML;
     const printWindow = window.open('', '_blank');
@@ -186,7 +192,8 @@ export default function Reports({ token, user }) {
   };
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 80, color: '#3E1F00', fontSize: 18 }}>
+    <div style={{ textAlign: 'center', padding: 80,
+                  color: '#3E1F00', fontSize: 18 }}>
       Loading Reports...
     </div>
   );
@@ -200,11 +207,12 @@ export default function Reports({ token, user }) {
         </h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
           Generate and export business reports for{' '}
-          <strong style={{ color: '#FF6B35' }}>{user?.company || 'Your Company'}</strong>
+          <strong style={{ color: '#FF6B35' }}>
+            {user?.company || 'Your Company'}
+          </strong>
         </p>
       </div>
 
-      {/* Filters */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
         <div style={{ color: '#3E1F00', fontWeight: 'bold',
@@ -215,7 +223,9 @@ export default function Reports({ token, user }) {
                       gap: 14 }}>
           <div>
             <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                            display: 'block', marginBottom: 6 }}>Date From</label>
+                            display: 'block', marginBottom: 6 }}>
+              Date From
+            </label>
             <input type="date" value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
@@ -224,7 +234,9 @@ export default function Reports({ token, user }) {
           </div>
           <div>
             <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                            display: 'block', marginBottom: 6 }}>Date To</label>
+                            display: 'block', marginBottom: 6 }}>
+              Date To
+            </label>
             <input type="date" value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
@@ -233,7 +245,9 @@ export default function Reports({ token, user }) {
           </div>
           <div>
             <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                            display: 'block', marginBottom: 6 }}>Branch</label>
+                            display: 'block', marginBottom: 6 }}>
+              Branch
+            </label>
             <select value={filterRegion}
               onChange={(e) => setFilterRegion(e.target.value)}
               style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
@@ -244,7 +258,9 @@ export default function Reports({ token, user }) {
           </div>
           <div>
             <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                            display: 'block', marginBottom: 6 }}>Category</label>
+                            display: 'block', marginBottom: 6 }}>
+              Category
+            </label>
             <select value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
               style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
@@ -258,37 +274,42 @@ export default function Reports({ token, user }) {
           setDateFrom(''); setDateTo('');
           setFilterRegion('All'); setFilterCategory('All');
         }}
-          style={{ marginTop: 12, background: 'none', border: '1px solid #FFB800',
-                   color: '#3E1F00', padding: '6px 16px', borderRadius: 6,
+          style={{ marginTop: 12, background: 'none',
+                   border: '1px solid #FFB800', color: '#3E1F00',
+                   padding: '6px 16px', borderRadius: 6,
                    cursor: 'pointer', fontSize: 12 }}>
           Clear Filters
         </button>
       </div>
 
-      {/* Summary KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16, marginBottom: 20 }}>
         {[
-          { label: 'Transactions', value: filteredSales.length, color: '#FF6B35' },
-          { label: 'Total Revenue', value: `MK ${fmt(totalRevenue)}`, color: '#2D6A4F' },
-          { label: 'Total Profit', value: `MK ${fmt(totalProfit)}`, color: '#FFB800' },
-          { label: 'Profit Margin', value: `${margin}%`, color: '#457B9D' },
+          { label: 'Transactions',
+            value: filteredSales.length, color: '#FF6B35' },
+          { label: 'Total Revenue',
+            value: `MK ${fmt(totalRevenue)}`, color: '#2D6A4F' },
+          { label: 'Total Profit',
+            value: `MK ${fmt(totalProfit)}`, color: '#FFB800' },
+          { label: 'Profit Margin',
+            value: `${margin}%`, color: '#457B9D' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: 'white', borderRadius: 12,
             padding: 20, borderLeft: `4px solid ${color}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>{label}</div>
+            <div style={{ color: '#888', fontSize: 12,
+                          marginBottom: 8 }}>{label}</div>
             <div style={{ color: '#3E1F00', fontSize: 18,
                           fontWeight: 'bold' }}>{value}</div>
           </div>
         ))}
       </div>
 
-      {/* Export Buttons */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 16, marginBottom: 20 }}>
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
           <div style={{ color: '#3E1F00', fontWeight: 'bold',
                         fontSize: 16, marginBottom: 8 }}>Sales Report</div>
@@ -299,12 +320,14 @@ export default function Reports({ token, user }) {
             style={{ background: '#FF6B35', border: 'none', color: 'white',
                      padding: '12px 24px', borderRadius: 8, cursor: 'pointer',
                      fontWeight: 'bold', fontSize: 14, width: '100%' }}>
-            {exporting.includes('Sales') ? '⏳ Exporting...' : '⬇ Export Sales CSV'}
+            {exporting.includes('Sales')
+              ? 'Exporting...' : 'Export Sales CSV'}
           </button>
         </div>
 
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
           <div style={{ color: '#3E1F00', fontWeight: 'bold',
                         fontSize: 16, marginBottom: 8 }}>Inventory Report</div>
@@ -315,12 +338,14 @@ export default function Reports({ token, user }) {
             style={{ background: '#2D6A4F', border: 'none', color: 'white',
                      padding: '12px 24px', borderRadius: 8, cursor: 'pointer',
                      fontWeight: 'bold', fontSize: 14, width: '100%' }}>
-            {exporting.includes('Inventory') ? '⏳ Exporting...' : '⬇ Export Inventory CSV'}
+            {exporting.includes('Inventory')
+              ? 'Exporting...' : 'Export Inventory CSV'}
           </button>
         </div>
 
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
           <div style={{ color: '#3E1F00', fontWeight: 'bold',
                         fontSize: 16, marginBottom: 8 }}>Summary Report</div>
@@ -331,12 +356,12 @@ export default function Reports({ token, user }) {
             style={{ background: '#FFB800', border: 'none', color: '#3E1F00',
                      padding: '12px 24px', borderRadius: 8, cursor: 'pointer',
                      fontWeight: 'bold', fontSize: 14, width: '100%' }}>
-            {exporting.includes('Summary') ? '⏳ Exporting...' : '⬇ Export Summary CSV'}
+            {exporting.includes('Summary')
+              ? 'Exporting...' : 'Export Summary CSV'}
           </button>
         </div>
       </div>
 
-      {/* Print Button */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20,
                     display: 'flex', justifyContent: 'space-between',
@@ -346,18 +371,17 @@ export default function Reports({ token, user }) {
             Print Report
           </div>
           <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>
-            Prints only the report preview table below — clean and professional
+            Prints only the report preview table below
           </div>
         </div>
         <button onClick={printReport}
           style={{ background: '#3E1F00', border: 'none', color: '#FFB800',
                    padding: '12px 24px', borderRadius: 8, cursor: 'pointer',
                    fontWeight: 'bold', fontSize: 14 }}>
-          🖨 Print Report
+          Print Report
         </button>
       </div>
 
-      {/* Sales Table Preview — this is what gets printed */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ color: '#3E1F00', fontWeight: 'bold',
@@ -365,7 +389,8 @@ export default function Reports({ token, user }) {
           Report Preview — {filteredSales.length} Records
         </div>
         <div ref={printRef} style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse',
+                          fontSize: 12 }}>
             <thead>
               <tr style={{ background: '#3E1F00' }}>
                 {['Date','Product','Category','Branch','Customer',
@@ -387,7 +412,9 @@ export default function Reports({ token, user }) {
                                color: '#3E1F00' }}>{s.product}</td>
                   <td style={{ padding: '8px 12px' }}>{s.category}</td>
                   <td style={{ padding: '8px 12px' }}>{s.region}</td>
-                  <td style={{ padding: '8px 12px' }}>{s.customer || 'Walk-in'}</td>
+                  <td style={{ padding: '8px 12px' }}>
+                    {s.customer || 'Walk-in'}
+                  </td>
                   <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                     {s.quantity}
                   </td>
@@ -419,7 +446,8 @@ export default function Reports({ token, user }) {
           </table>
           {filteredSales.length > 20 && (
             <div style={{ textAlign: 'center', padding: 12, color: '#888',
-                          fontSize: 12, borderTop: '1px solid #FFE8D0' }}>
+                          fontSize: 12,
+                          borderTop: '1px solid #FFE8D0' }}>
               Showing 20 of {filteredSales.length} records.
               Export CSV to see all records.
             </div>
