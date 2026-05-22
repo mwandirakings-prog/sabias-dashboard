@@ -24,10 +24,9 @@ export default function Inventory({ token, user }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
-      const cid = user?.company_id;
       const [inv, sum] = await Promise.all([
-        axios.get(`${API}/api/inventory?company_id=${cid}`, h),
-        axios.get(`${API}/api/inventory/summary?company_id=${cid}`, h),
+        axios.get(`${API}/api/inventory`, h),
+        axios.get(`${API}/api/inventory/summary`, h),
       ]);
       setInventory(inv.data.data);
       setSummary(sum.data.data);
@@ -36,7 +35,7 @@ export default function Inventory({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -51,7 +50,6 @@ export default function Inventory({ token, user }) {
         unit_cost: parseFloat(form.unit_cost),
         quantity_in_stock: parseInt(form.quantity_in_stock),
         reorder_level: parseInt(form.reorder_level),
-        company_id: user?.company_id,
       };
       if (editItem) {
         await axios.put(`${API}/api/inventory/${editItem.id}`, payload, h);
@@ -60,8 +58,10 @@ export default function Inventory({ token, user }) {
         await axios.post(`${API}/api/inventory`, payload, h);
         setSuccessMsg('Product added successfully!');
       }
-      setForm({ product: '', category: '', unit_price: '', unit_cost: '',
-                quantity_in_stock: '', reorder_level: '', supplier: '' });
+      setForm({
+        product: '', category: '', unit_price: '', unit_cost: '',
+        quantity_in_stock: '', reorder_level: '', supplier: ''
+      });
       setShowForm(false);
       setEditItem(null);
       fetchData();
@@ -99,18 +99,24 @@ export default function Inventory({ token, user }) {
   };
 
   const getStockStatus = (qty, reorder) => {
-    if (qty === 0) return { label: 'Out of Stock', color: '#C62828', bg: '#FFEBEE' };
-    if (qty <= reorder) return { label: 'Low Stock', color: '#E65100', bg: '#FFF3E0' };
+    if (qty === 0) return {
+      label: 'Out of Stock', color: '#C62828', bg: '#FFEBEE'
+    };
+    if (qty <= reorder) return {
+      label: 'Low Stock', color: '#E65100', bg: '#FFF3E0'
+    };
     return { label: 'In Stock', color: '#2E7D32', bg: '#E8F5E9' };
   };
 
-  const categories = ['All', ...new Set(inventory.map(i => i.category).filter(Boolean))];
+  const categories = ['All',
+    ...new Set(inventory.map(i => i.category).filter(Boolean))];
 
   const filtered = inventory.filter(i => {
     const matchSearch = search === '' ||
       i.product?.toLowerCase().includes(search.toLowerCase()) ||
       i.supplier?.toLowerCase().includes(search.toLowerCase());
-    const matchCat = filterCategory === 'All' || i.category === filterCategory;
+    const matchCat = filterCategory === 'All' ||
+      i.category === filterCategory;
     return matchSearch && matchCat;
   });
 
@@ -118,14 +124,21 @@ export default function Inventory({ token, user }) {
     <div style={{ background: 'white', borderRadius: 12, padding: 20,
       borderLeft: `4px solid ${color}`,
       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-      <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>{label}</div>
-      <div style={{ color: '#3E1F00', fontSize: 20, fontWeight: 'bold' }}>{value}</div>
-      {sub && <div style={{ color: '#AAA', fontSize: 11, marginTop: 4 }}>{sub}</div>}
+      <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ color: '#3E1F00', fontSize: 20, fontWeight: 'bold' }}>
+        {value}
+      </div>
+      {sub && (
+        <div style={{ color: '#AAA', fontSize: 11, marginTop: 4 }}>{sub}</div>
+      )}
     </div>
   );
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 80, color: '#3E1F00', fontSize: 18 }}>
+    <div style={{ textAlign: 'center', padding: 80,
+                  color: '#3E1F00', fontSize: 18 }}>
       Loading Inventory...
     </div>
   );
@@ -146,9 +159,14 @@ export default function Inventory({ token, user }) {
             </strong>
           </p>
         </div>
-        <button onClick={() => { setShowForm(!showForm); setEditItem(null);
-          setForm({ product: '', category: '', unit_price: '', unit_cost: '',
-                    quantity_in_stock: '', reorder_level: '', supplier: '' }); }}
+        <button onClick={() => {
+          setShowForm(!showForm);
+          setEditItem(null);
+          setForm({
+            product: '', category: '', unit_price: '', unit_cost: '',
+            quantity_in_stock: '', reorder_level: '', supplier: ''
+          });
+        }}
           style={{ background: '#FF6B35', border: 'none', color: 'white',
                    padding: '10px 20px', borderRadius: 8, cursor: 'pointer',
                    fontWeight: 'bold', fontSize: 14 }}>
@@ -192,7 +210,8 @@ export default function Inventory({ token, user }) {
 
       {showForm && (
         <div style={{ background: 'white', borderRadius: 12, padding: 24,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 24 }}>
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      marginBottom: 24 }}>
           <h3 style={{ color: '#3E1F00', marginTop: 0 }}>
             {editItem ? 'Update Product' : 'Add New Product'}
           </h3>
@@ -204,13 +223,15 @@ export default function Inventory({ token, user }) {
                 { label: 'Category', key: 'category', type: 'text' },
                 { label: 'Unit Price (MWK)', key: 'unit_price', type: 'number' },
                 { label: 'Unit Cost (MWK)', key: 'unit_cost', type: 'number' },
-                { label: 'Quantity in Stock', key: 'quantity_in_stock', type: 'number' },
+                { label: 'Quantity in Stock', key: 'quantity_in_stock',
+                  type: 'number' },
                 { label: 'Reorder Level', key: 'reorder_level', type: 'number' },
                 { label: 'Supplier', key: 'supplier', type: 'text' },
               ].map(({ label, key, type }) => (
                 <div key={key}>
-                  <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                                  display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 11, color: '#555',
+                                  fontWeight: 'bold', display: 'block',
+                                  marginBottom: 6 }}>
                     {label} <span style={{ color: '#FF6B35' }}>*</span>
                   </label>
                   <input type={type} required value={form[key]}
@@ -226,7 +247,8 @@ export default function Inventory({ token, user }) {
                 style={{ background: '#FF6B35', border: 'none', color: 'white',
                          padding: '10px 28px', borderRadius: 8, cursor: 'pointer',
                          fontWeight: 'bold', fontSize: 14 }}>
-                {submitting ? 'Saving...' : editItem ? 'Update Product' : 'Add Product'}
+                {submitting ? 'Saving...'
+                  : editItem ? 'Update Product' : 'Add Product'}
               </button>
               <button type="button"
                 onClick={() => { setShowForm(false); setEditItem(null); }}
@@ -252,7 +274,8 @@ export default function Inventory({ token, user }) {
             <input placeholder="Search product or supplier..."
               value={search} onChange={(e) => setSearch(e.target.value)}
               style={{ padding: '8px 12px', borderRadius: 8,
-                       border: '1px solid #FFB800', fontSize: 13, width: 220 }}/>
+                       border: '1px solid #FFB800', fontSize: 13,
+                       width: 220 }}/>
             <select value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
               style={{ padding: '8px 12px', borderRadius: 8,
@@ -260,20 +283,22 @@ export default function Inventory({ token, user }) {
               {categories.map(c => <option key={c}>{c}</option>)}
             </select>
             <button onClick={fetchData}
-              style={{ padding: '8px 16px', background: '#FF6B35', border: 'none',
-                       borderRadius: 8, color: 'white', cursor: 'pointer',
-                       fontSize: 13 }}>
+              style={{ padding: '8px 16px', background: '#FF6B35',
+                       border: 'none', borderRadius: 8, color: 'white',
+                       cursor: 'pointer', fontSize: 13 }}>
               Refresh
             </button>
           </div>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse',
+                          fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#3E1F00' }}>
                 {['Product','Category','Supplier','Unit Price','Unit Cost',
-                  'In Stock','Reorder Level','Stock Value','Status','Actions'].map(h => (
+                  'In Stock','Reorder Level','Stock Value',
+                  'Status','Actions'].map(h => (
                   <th key={h} style={{ padding: '10px 12px', color: '#FFB800',
                     textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
