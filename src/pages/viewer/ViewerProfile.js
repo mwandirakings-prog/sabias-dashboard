@@ -17,8 +17,7 @@ export default function ViewerProfile({ token, user }) {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const cid = user?.company_id;
-      const res = await axios.get(`${API}/api/sales?company_id=${cid}`,
+      const res = await axios.get(`${API}/api/sales`,
         { headers: { Authorization: `Bearer ${token}` } });
       setSales(res.data.data);
     } catch (err) {
@@ -26,7 +25,7 @@ export default function ViewerProfile({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -59,9 +58,9 @@ export default function ViewerProfile({ token, user }) {
   ).sort((a, b) => b[1] - a[1])[0];
 
   const tabs = [
-    { id: 'profile', label: '👤 My Profile' },
-    { id: 'overview', label: '📊 System Overview' },
-    { id: 'password', label: '🔒 Change Password' },
+    { id: 'profile', label: 'My Profile' },
+    { id: 'overview', label: 'System Overview' },
+    { id: 'password', label: 'Change Password' },
   ];
 
   if (loading) return (
@@ -73,7 +72,6 @@ export default function ViewerProfile({ token, user }) {
 
   return (
     <div style={{ fontFamily: 'Arial' }}>
-
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ color: '#2C3E50', margin: 0, fontSize: 22 }}>
           My Profile
@@ -92,8 +90,6 @@ export default function ViewerProfile({ token, user }) {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 20 }}>
-
-        {/* Sidebar */}
         <div>
           <div style={{ background: 'white', borderRadius: 12, padding: 20,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
@@ -107,8 +103,9 @@ export default function ViewerProfile({ token, user }) {
             </div>
             <div style={{ fontWeight: 'bold', color: '#2C3E50',
                           fontSize: 15 }}>{user?.name}</div>
-            <div style={{ color: '#888', fontSize: 12,
-                          marginTop: 4 }}>{user?.email}</div>
+            <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>
+              {user?.email}
+            </div>
             <div style={{ color: '#FF6B35', fontSize: 12, marginTop: 4,
                           fontWeight: 'bold' }}>
               {user?.company || 'Your Company'}
@@ -120,13 +117,10 @@ export default function ViewerProfile({ token, user }) {
                            textTransform: 'capitalize' }}>
               {user?.role}
             </span>
-            <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
-              📍 {user?.region === 'all' ? 'All Branches' : user?.region}
-            </div>
-            <div style={{ marginTop: 8, background: '#E8F5E9',
-                          borderRadius: 8, padding: '6px 10px',
-                          fontSize: 11, color: '#2E7D32', fontWeight: 'bold' }}>
-              🔒 Read Only Access
+            <div style={{ marginTop: 8, background: '#E8F5E9', borderRadius: 8,
+                          padding: '6px 10px', fontSize: 11,
+                          color: '#2E7D32', fontWeight: 'bold' }}>
+              Read Only Access
             </div>
           </div>
 
@@ -147,18 +141,14 @@ export default function ViewerProfile({ token, user }) {
           </div>
         </div>
 
-        {/* Content */}
         <div style={{ background: 'white', borderRadius: 12, padding: 28,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
 
-          {/* Profile Tab */}
           {activeTab === 'profile' && (
             <div>
-              <h3 style={{ color: '#2C3E50', marginTop: 0 }}>
-                My Information
-              </h3>
-              <div style={{ display: 'grid',
-                            gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <h3 style={{ color: '#2C3E50', marginTop: 0 }}>My Information</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
+                            gap: 16 }}>
                 {[
                   { label: 'Full Name', value: user?.name },
                   { label: 'Email Address', value: user?.email },
@@ -171,16 +161,11 @@ export default function ViewerProfile({ token, user }) {
                   { label: 'System', value: 'SABIAS v2.0' },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ background: '#EBF5FB',
-                    borderRadius: 10, padding: 16,
-                    border: '1px solid #D6EAF8' }}>
+                    borderRadius: 10, padding: 16, border: '1px solid #D6EAF8' }}>
                     <div style={{ fontSize: 11, color: '#888',
                                   marginBottom: 4 }}>{label}</div>
                     <div style={{ fontWeight: 'bold', color: '#2C3E50',
-                                  fontSize: 14,
-                                  textTransform: label === 'Role'
-                                    ? 'capitalize' : 'none' }}>
-                      {value}
-                    </div>
+                                  fontSize: 14 }}>{value}</div>
                   </div>
                 ))}
               </div>
@@ -189,7 +174,7 @@ export default function ViewerProfile({ token, user }) {
                             borderRadius: 12, padding: 20 }}>
                 <div style={{ color: 'white', fontWeight: 'bold',
                               fontSize: 15, marginBottom: 12 }}>
-                  ℹ️ Your Access Permissions
+                  Your Access Permissions
                 </div>
                 <div style={{ display: 'grid',
                               gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -211,8 +196,9 @@ export default function ViewerProfile({ token, user }) {
                                      fontWeight: 'bold' }}>
                         {allowed ? '✓' : '✗'}
                       </span>
-                      <span style={{ color: 'white',
-                                     fontSize: 12 }}>{label}</span>
+                      <span style={{ color: 'white', fontSize: 12 }}>
+                        {label}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -220,7 +206,6 @@ export default function ViewerProfile({ token, user }) {
             </div>
           )}
 
-          {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div>
               <h3 style={{ color: '#2C3E50', marginTop: 0 }}>
@@ -229,24 +214,20 @@ export default function ViewerProfile({ token, user }) {
                   {user?.company || 'Your Company'}
                 </span>
               </h3>
-              <div style={{ display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
                             gap: 16, marginBottom: 24 }}>
                 {[
-                  { label: 'Total Transactions',
-                    value: totalTransactions, color: '#2980B9', icon: '🧾' },
-                  { label: 'Total Revenue',
-                    value: `MK ${fmt(totalRevenue)}`,
+                  { label: 'Total Transactions', value: totalTransactions,
+                    color: '#2980B9', icon: '🧾' },
+                  { label: 'Total Revenue', value: `MK ${fmt(totalRevenue)}`,
                     color: '#2D6A4F', icon: '💰' },
-                  { label: 'Total Profit',
-                    value: `MK ${fmt(totalProfit)}`,
+                  { label: 'Total Profit', value: `MK ${fmt(totalProfit)}`,
                     color: '#FFB800', icon: '📈' },
-                  { label: 'Active Branches',
-                    value: regions.length, color: '#9B5DE5', icon: '🌍' },
+                  { label: 'Active Branches', value: regions.length,
+                    color: '#9B5DE5', icon: '🌍' },
                 ].map(({ label, value, color, icon }) => (
-                  <div key={label} style={{ background: 'white',
-                    borderRadius: 12, padding: 20,
-                    borderLeft: `4px solid ${color}`,
+                  <div key={label} style={{ background: 'white', borderRadius: 12,
+                    padding: 20, borderLeft: `4px solid ${color}`,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
                     <div style={{ color: '#888', fontSize: 12,
@@ -262,7 +243,7 @@ export default function ViewerProfile({ token, user }) {
                               padding: 20, color: 'white', marginBottom: 16 }}>
                   <div style={{ color: '#4CC9F0', fontWeight: 'bold',
                                 fontSize: 15, marginBottom: 8 }}>
-                    🏆 Top Performing Branch
+                    Top Performing Branch
                   </div>
                   <div style={{ fontSize: 22, fontWeight: 'bold' }}>
                     {topRegion[0]}
@@ -281,10 +262,9 @@ export default function ViewerProfile({ token, user }) {
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {regions.map(r => (
-                    <span key={r} style={{ background: '#2980B9',
-                                           color: 'white', padding: '4px 14px',
-                                           borderRadius: 20, fontSize: 12,
-                                           fontWeight: 'bold' }}>
+                    <span key={r} style={{ background: '#2980B9', color: 'white',
+                                           padding: '4px 14px', borderRadius: 20,
+                                           fontSize: 12, fontWeight: 'bold' }}>
                       {r}
                     </span>
                   ))}
@@ -293,12 +273,9 @@ export default function ViewerProfile({ token, user }) {
             </div>
           )}
 
-          {/* Password Tab */}
           {activeTab === 'password' && (
             <div>
-              <h3 style={{ color: '#2C3E50', marginTop: 0 }}>
-                Change Password
-              </h3>
+              <h3 style={{ color: '#2C3E50', marginTop: 0 }}>Change Password</h3>
               <form onSubmit={handlePasswordSave} style={{ maxWidth: 400 }}>
                 {[
                   { label: 'Current Password', key: 'current' },
@@ -313,21 +290,14 @@ export default function ViewerProfile({ token, user }) {
                       onChange={(e) => setPasswords({
                         ...passwords, [key]: e.target.value })}
                       style={{ width: '100%', padding: '10px 12px',
-                               borderRadius: 8,
-                               border: '1.5px solid #2980B9',
+                               borderRadius: 8, border: '1.5px solid #2980B9',
                                fontSize: 13, boxSizing: 'border-box' }}/>
                   </div>
                 ))}
-                <div style={{ background: '#EBF5FB', borderRadius: 8,
-                              padding: 12, marginBottom: 16,
-                              fontSize: 12, color: '#888' }}>
-                  💡 Password must be at least 8 characters
-                </div>
                 <button type="submit"
-                  style={{ background: '#2980B9', border: 'none',
-                           color: 'white', padding: '10px 28px',
-                           borderRadius: 8, cursor: 'pointer',
-                           fontWeight: 'bold', fontSize: 14 }}>
+                  style={{ background: '#2980B9', border: 'none', color: 'white',
+                           padding: '10px 28px', borderRadius: 8,
+                           cursor: 'pointer', fontWeight: 'bold', fontSize: 14 }}>
                   Change Password
                 </button>
               </form>

@@ -17,8 +17,7 @@ export default function ViewerReports({ token, user }) {
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
-      const cid = user?.company_id;
-      const res = await axios.get(`${API}/api/sales?company_id=${cid}`,
+      const res = await axios.get(`${API}/api/sales`,
         { headers: { Authorization: `Bearer ${token}` } });
       setSales(res.data.data);
     } catch (err) {
@@ -26,20 +25,23 @@ export default function ViewerReports({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const filteredSales = sales.filter(s => {
     const matchRegion = filterRegion === 'All' || s.region === filterRegion;
-    const matchCategory = filterCategory === 'All' || s.category === filterCategory;
+    const matchCategory = filterCategory === 'All' ||
+      s.category === filterCategory;
     const matchFrom = !dateFrom || s.sale_date?.split('T')[0] >= dateFrom;
     const matchTo = !dateTo || s.sale_date?.split('T')[0] <= dateTo;
     return matchRegion && matchCategory && matchFrom && matchTo;
   });
 
-  const uniqueRegions = ['All', ...new Set(sales.map(s => s.region).filter(Boolean))];
-  const uniqueCategories = ['All', ...new Set(sales.map(s => s.category).filter(Boolean))];
+  const uniqueRegions = ['All',
+    ...new Set(sales.map(s => s.region).filter(Boolean))];
+  const uniqueCategories = ['All',
+    ...new Set(sales.map(s => s.category).filter(Boolean))];
 
   const totalRevenue = filteredSales.reduce((sum, s) =>
     sum + parseFloat(s.revenue || 0), 0);
@@ -60,8 +62,7 @@ export default function ViewerReports({ token, user }) {
             h2 { color: #2C3E50; }
             .meta { color: #888; font-size: 12px; margin-bottom: 20px; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            th { background: #2C3E50; color: #4CC9F0; padding: 8px 10px;
-                 text-align: left; }
+            th { background: #2C3E50; color: #4CC9F0; padding: 8px 10px; text-align: left; }
             td { padding: 7px 10px; border-bottom: 1px solid #D6EAF8; }
             tr:nth-child(even) { background: #EBF5FB; }
             .summary { display: flex; gap: 20px; margin-bottom: 20px; }
@@ -79,22 +80,14 @@ export default function ViewerReports({ token, user }) {
             Branch: ${filterRegion} | Category: ${filterCategory}
           </div>
           <div class="summary">
-            <div class="kpi">
-              <div class="kpi-label">Transactions</div>
-              <div class="kpi-value">${filteredSales.length}</div>
-            </div>
-            <div class="kpi">
-              <div class="kpi-label">Total Revenue</div>
-              <div class="kpi-value">MK ${fmt(totalRevenue)}</div>
-            </div>
-            <div class="kpi">
-              <div class="kpi-label">Total Profit</div>
-              <div class="kpi-value">MK ${fmt(totalProfit)}</div>
-            </div>
-            <div class="kpi">
-              <div class="kpi-label">Profit Margin</div>
-              <div class="kpi-value">${margin}%</div>
-            </div>
+            <div class="kpi"><div class="kpi-label">Transactions</div>
+              <div class="kpi-value">${filteredSales.length}</div></div>
+            <div class="kpi"><div class="kpi-label">Total Revenue</div>
+              <div class="kpi-value">MK ${fmt(totalRevenue)}</div></div>
+            <div class="kpi"><div class="kpi-label">Total Profit</div>
+              <div class="kpi-value">MK ${fmt(totalProfit)}</div></div>
+            <div class="kpi"><div class="kpi-label">Profit Margin</div>
+              <div class="kpi-value">${margin}%</div></div>
           </div>
           ${printContent}
         </body>
@@ -102,10 +95,7 @@ export default function ViewerReports({ token, user }) {
     `);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
   };
 
   if (loading) return (
@@ -117,21 +107,16 @@ export default function ViewerReports({ token, user }) {
 
   return (
     <div style={{ fontFamily: 'Arial' }}>
-
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ color: '#2C3E50', margin: 0, fontSize: 22 }}>
-          Reports
-        </h2>
+        <h2 style={{ color: '#2C3E50', margin: 0, fontSize: 22 }}>Reports</h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
           Sales reports for{' '}
           <strong style={{ color: '#FF6B35' }}>
             {user?.company || 'Your Company'}
-          </strong>
-          {' '}— read only
+          </strong> — read only
         </p>
       </div>
 
-      {/* Filters */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
         <div style={{ color: '#2C3E50', fontWeight: 'bold',
@@ -140,24 +125,24 @@ export default function ViewerReports({ token, user }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                       gap: 14 }}>
-          <div>
-            <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                            display: 'block', marginBottom: 6 }}>Date From</label>
-            <input type="date" value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
-                       border: '1.5px solid #2980B9', fontSize: 13,
-                       boxSizing: 'border-box' }}/>
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                            display: 'block', marginBottom: 6 }}>Date To</label>
-            <input type="date" value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
-                       border: '1.5px solid #2980B9', fontSize: 13,
-                       boxSizing: 'border-box' }}/>
-          </div>
+          {[
+            { label: 'Date From', value: dateFrom, type: 'date',
+              set: setDateFrom },
+            { label: 'Date To', value: dateTo, type: 'date',
+              set: setDateTo },
+          ].map(({ label, value, type, set }) => (
+            <div key={label}>
+              <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
+                              display: 'block', marginBottom: 6 }}>
+                {label}
+              </label>
+              <input type={type} value={value}
+                onChange={(e) => set(e.target.value)}
+                style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
+                         border: '1.5px solid #2980B9', fontSize: 13,
+                         boxSizing: 'border-box' }}/>
+            </div>
+          ))}
           <div>
             <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
                             display: 'block', marginBottom: 6 }}>Branch</label>
@@ -193,15 +178,12 @@ export default function ViewerReports({ token, user }) {
         </button>
       </div>
 
-      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16, marginBottom: 20 }}>
         {[
           { label: 'Transactions', value: filteredSales.length, color: '#2980B9' },
-          { label: 'Total Revenue',
-            value: `MK ${fmt(totalRevenue)}`, color: '#2D6A4F' },
-          { label: 'Total Profit',
-            value: `MK ${fmt(totalProfit)}`, color: '#FFB800' },
+          { label: 'Total Revenue', value: `MK ${fmt(totalRevenue)}`, color: '#2D6A4F' },
+          { label: 'Total Profit', value: `MK ${fmt(totalProfit)}`, color: '#FFB800' },
           { label: 'Profit Margin', value: `${margin}%`, color: '#9B5DE5' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: 'white', borderRadius: 12,
@@ -214,7 +196,6 @@ export default function ViewerReports({ token, user }) {
         ))}
       </div>
 
-      {/* Print + Notice */}
       <div style={{ display: 'flex', justifyContent: 'space-between',
                     alignItems: 'center', background: '#EBF5FB',
                     borderRadius: 10, padding: '12px 16px',
@@ -229,11 +210,10 @@ export default function ViewerReports({ token, user }) {
           style={{ background: '#2C3E50', border: 'none', color: '#4CC9F0',
                    padding: '8px 20px', borderRadius: 8, cursor: 'pointer',
                    fontWeight: 'bold', fontSize: 13 }}>
-          🖨 Print Report
+          Print Report
         </button>
       </div>
 
-      {/* Sales Table */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ color: '#2C3E50', fontWeight: 'bold',

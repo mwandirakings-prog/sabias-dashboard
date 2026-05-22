@@ -15,11 +15,10 @@ export default function ViewerInventory({ token, user }) {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const cid = user?.company_id;
       const h = { headers: { Authorization: `Bearer ${token}` } };
       const [inv, sum] = await Promise.all([
-        axios.get(`${API}/api/inventory?company_id=${cid}`, h),
-        axios.get(`${API}/api/inventory/summary?company_id=${cid}`, h),
+        axios.get(`${API}/api/inventory`, h),
+        axios.get(`${API}/api/inventory/summary`, h),
       ]);
       setInventory(inv.data.data);
       setSummary(sum.data.data);
@@ -28,7 +27,7 @@ export default function ViewerInventory({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -38,7 +37,8 @@ export default function ViewerInventory({ token, user }) {
     return { label: 'In Stock', color: '#2E7D32', bg: '#E8F5E9' };
   };
 
-  const categories = ['All', ...new Set(inventory.map(i => i.category).filter(Boolean))];
+  const categories = ['All',
+    ...new Set(inventory.map(i => i.category).filter(Boolean))];
 
   const filtered = inventory.filter(i => {
     const matchSearch = search === '' ||
@@ -57,7 +57,6 @@ export default function ViewerInventory({ token, user }) {
 
   return (
     <div style={{ fontFamily: 'Arial' }}>
-
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ color: '#2C3E50', margin: 0, fontSize: 22 }}>
           Inventory View
@@ -66,12 +65,10 @@ export default function ViewerInventory({ token, user }) {
           Stock levels for{' '}
           <strong style={{ color: '#FF6B35' }}>
             {user?.company || 'Your Company'}
-          </strong>
-          {' '}— read only
+          </strong> — read only
         </p>
       </div>
 
-      {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 16, marginBottom: 16 }}>
         {[
@@ -112,7 +109,6 @@ export default function ViewerInventory({ token, user }) {
         ))}
       </div>
 
-      {/* Table */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between',
@@ -142,7 +138,8 @@ export default function ViewerInventory({ token, user }) {
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse',
+                          fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#2C3E50' }}>
                 {['Product','Category','Supplier','Unit Price',

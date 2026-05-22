@@ -20,13 +20,12 @@ export default function ViewerDashboard({ token, user }) {
     try {
       setLoading(true);
       const h = { headers: { Authorization: `Bearer ${token}` } };
-      const cid = user?.company_id;
       const [k, r, c, m, s] = await Promise.all([
-        axios.get(`${API}/api/kpis?company_id=${cid}`, h),
-        axios.get(`${API}/api/regions?company_id=${cid}`, h),
-        axios.get(`${API}/api/categories?company_id=${cid}`, h),
-        axios.get(`${API}/api/monthly?company_id=${cid}`, h),
-        axios.get(`${API}/api/sales?company_id=${cid}`, h),
+        axios.get(`${API}/api/kpis`, h),
+        axios.get(`${API}/api/regions`, h),
+        axios.get(`${API}/api/categories`, h),
+        axios.get(`${API}/api/monthly`, h),
+        axios.get(`${API}/api/sales`, h),
       ]);
       setKpis(k.data.data);
       setRegions(r.data.data);
@@ -38,7 +37,7 @@ export default function ViewerDashboard({ token, user }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -77,7 +76,6 @@ export default function ViewerDashboard({ token, user }) {
   return (
     <div style={{ fontFamily: 'Arial' }}>
 
-      {/* Read-only banner */}
       <div style={{ background: '#EBF5FB', border: '1px solid #AED6F1',
                     borderRadius: 10, padding: '10px 16px', marginBottom: 24,
                     display: 'flex', justifyContent: 'space-between',
@@ -86,8 +84,7 @@ export default function ViewerDashboard({ token, user }) {
           You are in <strong>View-Only</strong> mode for{' '}
           <strong style={{ color: '#FF6B35' }}>
             {user?.company || 'Your Company'}
-          </strong>
-          . You can monitor and analyze but cannot modify data.
+          </strong>. You can monitor and analyze but cannot modify data.
         </div>
         <button onClick={fetchAll}
           style={{ background: '#2980B9', border: 'none', color: 'white',
@@ -97,19 +94,16 @@ export default function ViewerDashboard({ token, user }) {
         </button>
       </div>
 
-      {/* Title */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
           Business Intelligence Overview
         </h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
           Welcome, <strong style={{ color: '#FF6B35' }}>{user?.name}</strong>
-          {' '}· Read-only access ·{' '}
-          {user?.company || 'Your Company'}
+          {' '}· Read-only access · {user?.company || 'Your Company'}
         </p>
       </div>
 
-      {/* KPI Row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16, marginBottom: 16 }}>
         <KPICard label="Total Revenue"
@@ -126,7 +120,6 @@ export default function ViewerDashboard({ token, user }) {
                  color="#457B9D" sub="Transactions"/>
       </div>
 
-      {/* KPI Row 2 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16, marginBottom: 24 }}>
         <KPICard label="Units Sold"
@@ -143,7 +136,6 @@ export default function ViewerDashboard({ token, user }) {
                  color="#FF6B35" sub="Distinct categories"/>
       </div>
 
-      {/* Charts Row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 16 }}>
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
@@ -177,8 +169,7 @@ export default function ViewerDashboard({ token, user }) {
                      tickFormatter={(v) => v?.slice(5)}/>
               <YAxis tick={{ fontSize: 10 }}
                      tickFormatter={(v) => `${(v/1000000).toFixed(1)}M`}/>
-              <Tooltip formatter={(v, name) => [`MK ${fmt(v)}`, name]}
-                       labelFormatter={(l) => `Month: ${l}`}/>
+              <Tooltip formatter={(v, name) => [`MK ${fmt(v)}`, name]}/>
               <Legend/>
               <Line type="monotone" dataKey="revenue" name="Revenue"
                     stroke="#FF6B35" strokeWidth={2.5}
@@ -191,7 +182,6 @@ export default function ViewerDashboard({ token, user }) {
         </div>
       </div>
 
-      {/* Charts Row 2 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
                     gap: 16, marginBottom: 24 }}>
         <div style={{ background: 'white', borderRadius: 12, padding: 20,
@@ -240,7 +230,6 @@ export default function ViewerDashboard({ token, user }) {
         </div>
       </div>
 
-      {/* Category Performance */}
       <div style={{ background: 'white', borderRadius: 12, padding: 20,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ color: '#3E1F00', fontWeight: 'bold',
@@ -249,51 +238,48 @@ export default function ViewerDashboard({ token, user }) {
         </div>
         <div style={{ display: 'grid',
                       gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          {categories
-            .sort((a, b) => b.revenue - a.revenue)
-            .map((cat, i) => (
-              <div key={i} style={{ border: '1px solid #D6EAF8',
-                                    borderRadius: 10, padding: 16,
-                                    background: '#F4F9FF' }}>
-                <div style={{ color: '#2C3E50', fontWeight: 'bold',
-                              fontSize: 14, marginBottom: 10 }}>
-                  {cat.category}
+          {categories.sort((a, b) => b.revenue - a.revenue).map((cat, i) => (
+            <div key={i} style={{ border: '1px solid #D6EAF8',
+                                  borderRadius: 10, padding: 16,
+                                  background: '#F4F9FF' }}>
+              <div style={{ color: '#2C3E50', fontWeight: 'bold',
+                            fontSize: 14, marginBottom: 10 }}>
+                {cat.category}
+              </div>
+              <div style={{ display: 'grid',
+                            gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: '#AAA' }}>Revenue</div>
+                  <div style={{ fontSize: 13, fontWeight: 'bold',
+                                color: '#FF6B35' }}>
+                    MK {fmt(cat.revenue)}
+                  </div>
                 </div>
-                <div style={{ display: 'grid',
-                              gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 10, color: '#AAA' }}>Revenue</div>
-                    <div style={{ fontSize: 13, fontWeight: 'bold',
-                                  color: '#FF6B35' }}>
-                      MK {fmt(cat.revenue)}
-                    </div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#AAA' }}>Profit</div>
+                  <div style={{ fontSize: 13, fontWeight: 'bold',
+                                color: '#2D6A4F' }}>
+                    MK {fmt(cat.profit)}
                   </div>
-                  <div>
-                    <div style={{ fontSize: 10, color: '#AAA' }}>Profit</div>
-                    <div style={{ fontSize: 13, fontWeight: 'bold',
-                                  color: '#2D6A4F' }}>
-                      MK {fmt(cat.profit)}
-                    </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#AAA' }}>Records</div>
+                  <div style={{ fontSize: 13, fontWeight: 'bold',
+                                color: '#457B9D' }}>
+                    {cat.records}
                   </div>
-                  <div>
-                    <div style={{ fontSize: 10, color: '#AAA' }}>Records</div>
-                    <div style={{ fontSize: 13, fontWeight: 'bold',
-                                  color: '#457B9D' }}>
-                      {cat.records}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, color: '#AAA' }}>Margin</div>
-                    <div style={{ fontSize: 13, fontWeight: 'bold',
-                                  color: '#FFB800' }}>
-                      {cat.revenue > 0
-                        ? ((cat.profit / cat.revenue) * 100).toFixed(1)
-                        : 0}%
-                    </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#AAA' }}>Margin</div>
+                  <div style={{ fontSize: 13, fontWeight: 'bold',
+                                color: '#FFB800' }}>
+                    {cat.revenue > 0
+                      ? ((cat.profit / cat.revenue) * 100).toFixed(1) : 0}%
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -16,30 +16,30 @@ export default function ViewerForecasting({ token, user }) {
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
-      const cid = user?.company_id;
       const h = { headers: { Authorization: `Bearer ${token}` } };
-      const res = await axios.get(`${API}/api/monthly?company_id=${cid}`, h);
+      const res = await axios.get(`${API}/api/monthly`, h);
       setMonthly(res.data.data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const generateForecast = (data, months = 3) => {
     if (data.length < 2) return [];
     const n = data.length;
-    const revenues = data.map((d, i) => ({ x: i, y: parseFloat(d.revenue || 0) }));
+    const revenues = data.map((d, i) => ({
+      x: i, y: parseFloat(d.revenue || 0)
+    }));
     const sumX = revenues.reduce((s, p) => s + p.x, 0);
     const sumY = revenues.reduce((s, p) => s + p.y, 0);
     const sumXY = revenues.reduce((s, p) => s + p.x * p.y, 0);
     const sumX2 = revenues.reduce((s, p) => s + p.x * p.x, 0);
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
-
     const forecasts = [];
     for (let i = 1; i <= months; i++) {
       const x = n - 1 + i;
@@ -99,7 +99,6 @@ export default function ViewerForecasting({ token, user }) {
 
   return (
     <div style={{ fontFamily: 'Arial' }}>
-
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ color: '#2C3E50', margin: 0, fontSize: 22 }}>
           Forecasting & Analytics
@@ -211,9 +210,10 @@ export default function ViewerForecasting({ token, user }) {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ color: '#2C3E50', fontWeight: 'bold',
                       fontSize: 15, marginBottom: 16 }}>
-          📊 6-Month Revenue Forecast
+          6-Month Revenue Forecast
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse',
+                        fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#2C3E50' }}>
               {['Month','Projected Revenue','Projected Profit',
@@ -233,8 +233,10 @@ export default function ViewerForecasting({ token, user }) {
               const margin = f.projected > 0
                 ? ((f.profit / f.projected) * 100).toFixed(1) : 0;
               const confidence = i < 2 ? 'High' : i < 4 ? 'Medium' : 'Low';
-              const confColor = i < 2 ? '#2E7D32' : i < 4 ? '#E65100' : '#C62828';
-              const confBg = i < 2 ? '#E8F5E9' : i < 4 ? '#FFF3E0' : '#FFEBEE';
+              const confColor = i < 2 ? '#2E7D32'
+                : i < 4 ? '#E65100' : '#C62828';
+              const confBg = i < 2 ? '#E8F5E9'
+                : i < 4 ? '#FFF3E0' : '#FFEBEE';
               return (
                 <tr key={i} style={{
                   background: i % 2 === 0 ? '#EBF5FB' : 'white',
