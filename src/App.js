@@ -37,7 +37,7 @@ const ComingSoon = ({ page }) => (
 );
 
 // ── SUPER ADMIN EMAIL ─────────────────────────────────────
-const SUPER_ADMIN_EMAIL = 'sabiasadmin@gmail.com';
+const SUPER_ADMIN_EMAIL = 'sabiascustomercare@gmail.com';
 
 function AdminApp({ user, token, logout }) {
   const [activePage, setActivePage] = useState('dashboard');
