@@ -5,6 +5,7 @@ const API = 'https://malawi-sales-backend.onrender.com';
 
 export default function SuperAdmin({ token, user, onLogout }) {
   const [companies, setCompanies] = useState([]);
+  const [apiKeyStats, setApiKeyStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -13,6 +14,7 @@ export default function SuperAdmin({ token, user, onLogout }) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [expandedApi, setExpandedApi] = useState(null);
 
   const fmt = (date) => date ? new Date(date).toLocaleDateString() : 'N/A';
 
@@ -26,6 +28,21 @@ export default function SuperAdmin({ token, user, onLogout }) {
       setErrorMsg('Failed to load companies.');
     } finally {
       setLoading(false);
+    }
+  }, [token]);
+
+  const fetchApiKeyStats = useCallback(async (companyId) => {
+    try {
+      const res = await axios.get(
+        `${API}/api/superadmin/companies/${companyId}/apikeys`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setApiKeyStats(prev => ({
+        ...prev,
+        [companyId]: res.data.data
+      }));
+    } catch (err) {
+      console.error('Failed to load API keys for company', companyId);
     }
   }, [token]);
 
@@ -49,13 +66,23 @@ export default function SuperAdmin({ token, user, onLogout }) {
 
     if (company.subscription_status === 'active' && subEnd) {
       const days = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
-      if (days <= 0) return { label: 'Subscription Expired', color: '#C62828', bg: '#FFEBEE', days: 0 };
-      return { label: `Active — ${days}d left`, color: '#2E7D32', bg: '#E8F5E9', days };
+      if (days <= 0) return {
+        label: 'Subscription Expired', color: '#C62828',
+        bg: '#FFEBEE', days: 0 };
+      return {
+        label: `Active — ${days}d left`, color: '#2E7D32',
+        bg: '#E8F5E9', days };
     }
     const days = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
-    if (days <= 0) return { label: 'Trial Expired', color: '#C62828', bg: '#FFEBEE', days: 0 };
-    if (days <= 3) return { label: `Trial — ${days}d left`, color: '#E65100', bg: '#FFF3E0', days };
-    return { label: `Trial — ${days}d left`, color: '#1565C0', bg: '#E3F2FD', days };
+    if (days <= 0) return {
+      label: 'Trial Expired', color: '#C62828',
+      bg: '#FFEBEE', days: 0 };
+    if (days <= 3) return {
+      label: `Trial — ${days}d left`, color: '#E65100',
+      bg: '#FFF3E0', days };
+    return {
+      label: `Trial — ${days}d left`, color: '#1565C0',
+      bg: '#E3F2FD', days };
   };
 
   const handleToggle = async (company) => {
@@ -66,7 +93,8 @@ export default function SuperAdmin({ token, user, onLogout }) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       showSuccess(
-        `${company.name} ${company.active ? 'deactivated' : 'activated'} successfully!`
+        `${company.name} ${company.active
+          ? 'deactivated' : 'activated'} successfully!`
       );
       fetchCompanies();
     } catch (err) {
@@ -118,6 +146,17 @@ export default function SuperAdmin({ token, user, onLogout }) {
     }
   };
 
+  const handleToggleApi = (companyId) => {
+    if (expandedApi === companyId) {
+      setExpandedApi(null);
+    } else {
+      setExpandedApi(companyId);
+      if (!apiKeyStats[companyId]) {
+        fetchApiKeyStats(companyId);
+      }
+    }
+  };
+
   const filtered = companies.filter(c => {
     const matchSearch = search === '' ||
       c.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -126,9 +165,12 @@ export default function SuperAdmin({ token, user, onLogout }) {
     const trialInfo = getTrialInfo(c);
     const matchStatus = filterStatus === 'All' ||
       (filterStatus === 'Active' && c.subscription_status === 'active') ||
-      (filterStatus === 'Trial' && c.subscription_status === 'trial' && trialInfo.days > 0) ||
+      (filterStatus === 'Trial' &&
+        c.subscription_status === 'trial' && trialInfo.days > 0) ||
       (filterStatus === 'Expired' && trialInfo.days <= 0) ||
-      (filterStatus === 'Inactive' && !c.active);
+      (filterStatus === 'Inactive' && !c.active) ||
+      (filterStatus === 'API Users' &&
+        (c.api_key_count > 0 || apiKeyStats[c.id]?.length > 0));
     return matchSearch && matchStatus;
   });
 
@@ -146,9 +188,11 @@ export default function SuperAdmin({ token, user, onLogout }) {
                   background: '#0D1117' }}>
 
       {/* Top Bar */}
-      <div style={{ background: '#161B22', borderBottom: '1px solid #30363D',
+      <div style={{ background: '#161B22',
+                    borderBottom: '1px solid #30363D',
                     padding: '12px 32px', display: 'flex',
-                    justifyContent: 'space-between', alignItems: 'center' }}>
+                    justifyContent: 'space-between',
+                    alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ background: '#FFB800', color: '#0D1117',
                         fontWeight: 'bold', fontSize: 18,
@@ -156,7 +200,8 @@ export default function SuperAdmin({ token, user, onLogout }) {
                         letterSpacing: 2 }}>
             SABIAS
           </div>
-          <div style={{ color: '#F0F6FC', fontWeight: 'bold', fontSize: 16 }}>
+          <div style={{ color: '#F0F6FC', fontWeight: 'bold',
+                        fontSize: 16 }}>
             Super Admin Portal
           </div>
           <span style={{ background: '#E63946', color: 'white',
@@ -167,7 +212,7 @@ export default function SuperAdmin({ token, user, onLogout }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ color: '#8B949E', fontSize: 13 }}>
-            👑 {user?.name} — Kings Mwandira
+            {user?.name} — Kings Mwandira
           </div>
           <button onClick={fetchCompanies}
             style={{ background: '#21262D', border: '1px solid #30363D',
@@ -189,16 +234,18 @@ export default function SuperAdmin({ token, user, onLogout }) {
         {/* Messages */}
         {actionMsg && (
           <div style={{ background: '#1B4332', border: '1px solid #2D6A4F',
-                        borderRadius: 8, padding: '12px 16px', marginBottom: 20,
-                        color: '#52B788', fontWeight: 'bold' }}>
-            ✓ {actionMsg}
+                        borderRadius: 8, padding: '12px 16px',
+                        marginBottom: 20, color: '#52B788',
+                        fontWeight: 'bold' }}>
+            {actionMsg}
           </div>
         )}
         {errorMsg && (
           <div style={{ background: '#4A0404', border: '1px solid #E63946',
-                        borderRadius: 8, padding: '12px 16px', marginBottom: 20,
-                        color: '#FF6B6B', fontWeight: 'bold' }}>
-            ⚠ {errorMsg}
+                        borderRadius: 8, padding: '12px 16px',
+                        marginBottom: 20, color: '#FF6B6B',
+                        fontWeight: 'bold' }}>
+            {errorMsg}
           </div>
         )}
 
@@ -208,8 +255,8 @@ export default function SuperAdmin({ token, user, onLogout }) {
             Company Management
           </h2>
           <p style={{ color: '#8B949E', margin: '4px 0 0', fontSize: 13 }}>
-            Manage all SABIAS registered companies — trials, subscriptions
-            and access control
+            Manage all SABIAS registered companies — trials,
+            subscriptions, API access and control
           </p>
         </div>
 
@@ -219,19 +266,18 @@ export default function SuperAdmin({ token, user, onLogout }) {
                       gap: 16, marginBottom: 28 }}>
           {[
             { label: 'Total Companies', value: totalCompanies,
-              color: '#FFB800', icon: '🏢' },
+              color: '#FFB800' },
             { label: 'Paid Active', value: activeCompanies,
-              color: '#52B788', icon: '✅' },
+              color: '#52B788' },
             { label: 'On Trial', value: trialCompanies,
-              color: '#4CC9F0', icon: '⏳' },
+              color: '#4CC9F0' },
             { label: 'Expired', value: expiredCompanies,
-              color: '#E63946', icon: '🔒' },
-          ].map(({ label, value, color, icon }) => (
+              color: '#E63946' },
+          ].map(({ label, value, color }) => (
             <div key={label} style={{ background: '#161B22',
               borderRadius: 12, padding: 20,
               border: `1px solid ${color}33`,
               borderLeft: `4px solid ${color}` }}>
-              <div style={{ fontSize: 24, marginBottom: 8 }}>{icon}</div>
               <div style={{ color: '#8B949E', fontSize: 12,
                             marginBottom: 4 }}>{label}</div>
               <div style={{ color: '#F0F6FC', fontSize: 28,
@@ -247,38 +293,52 @@ export default function SuperAdmin({ token, user, onLogout }) {
             value={search} onChange={(e) => setSearch(e.target.value)}
             style={{ padding: '10px 16px', borderRadius: 8,
                      border: '1px solid #30363D', fontSize: 13,
-                     width: 280, background: '#161B22', color: '#F0F6FC' }}/>
-          {['All', 'Active', 'Trial', 'Expired', 'Inactive'].map(f => (
+                     width: 280, background: '#161B22',
+                     color: '#F0F6FC' }}/>
+          {['All', 'Active', 'Trial', 'Expired',
+            'Inactive', 'API Users'].map(f => (
             <button key={f} onClick={() => setFilterStatus(f)}
               style={{
-                padding: '8px 18px', borderRadius: 20, cursor: 'pointer',
-                fontWeight: 'bold', fontSize: 12, border: 'none',
+                padding: '8px 18px', borderRadius: 20,
+                cursor: 'pointer', fontWeight: 'bold',
+                fontSize: 12, border: 'none',
                 background: filterStatus === f ? '#FFB800' : '#21262D',
                 color: filterStatus === f ? '#0D1117' : '#8B949E',
               }}>
               {f}
             </button>
           ))}
-          <div style={{ color: '#8B949E', fontSize: 13, marginLeft: 'auto' }}>
+          <div style={{ color: '#8B949E', fontSize: 13,
+                        marginLeft: 'auto' }}>
             {filtered.length} of {totalCompanies} companies
           </div>
         </div>
 
-        {/* Companies Table */}
+        {/* Companies List */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 80, color: '#8B949E',
-                        fontSize: 18 }}>
+          <div style={{ textAlign: 'center', padding: 80,
+                        color: '#8B949E', fontSize: 18 }}>
             Loading companies...
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 80, color: '#8B949E' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🏢</div>
-            <div>No companies found</div>
+          <div style={{ textAlign: 'center', padding: 80,
+                        color: '#8B949E' }}>
+            <div style={{ fontSize: 32, marginBottom: 16 }}>
+              No companies found
+            </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column',
+                        gap: 12 }}>
             {filtered.map(company => {
               const trialInfo = getTrialInfo(company);
+              const companyApiKeys = apiKeyStats[company.id] || [];
+              const hasApiKeys = companyApiKeys.length > 0;
+              const totalApiRequests = companyApiKeys.reduce(
+                (sum, k) => sum + (k.requests_total || 0), 0);
+              const todayApiRequests = companyApiKeys.reduce(
+                (sum, k) => sum + (k.requests_today || 0), 0);
+
               return (
                 <div key={company.id}
                   style={{ background: '#161B22', borderRadius: 12,
@@ -287,15 +347,18 @@ export default function SuperAdmin({ token, user, onLogout }) {
                            padding: 20 }}>
 
                   {/* Company Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between',
-                                alignItems: 'flex-start', marginBottom: 16 }}>
+                  <div style={{ display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                                marginBottom: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center',
                                   gap: 14 }}>
-                      <div style={{ width: 48, height: 48, borderRadius: '50%',
+                      <div style={{ width: 48, height: 48,
+                                    borderRadius: '50%',
                                     background: '#FFB800', color: '#0D1117',
                                     display: 'flex', alignItems: 'center',
-                                    justifyContent: 'center', fontWeight: 'bold',
-                                    fontSize: 20 }}>
+                                    justifyContent: 'center',
+                                    fontWeight: 'bold', fontSize: 20 }}>
                         {company.name?.charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -306,7 +369,8 @@ export default function SuperAdmin({ token, user, onLogout }) {
                             <span style={{ background: '#4A0404',
                                            color: '#FF6B6B', fontSize: 10,
                                            padding: '2px 8px', borderRadius: 4,
-                                           marginLeft: 8, fontWeight: 'bold' }}>
+                                           marginLeft: 8,
+                                           fontWeight: 'bold' }}>
                               INACTIVE
                             </span>
                           )}
@@ -317,8 +381,8 @@ export default function SuperAdmin({ token, user, onLogout }) {
                         </div>
                         <div style={{ color: '#8B949E', fontSize: 12,
                                       marginTop: 2 }}>
-                          📍 {company.city} · 📞 {company.phone} ·
-                          👥 {company.user_count} user(s) ·
+                          {company.city} · {company.phone} ·
+                          {' '}{company.user_count} user(s) ·
                           Joined {fmt(company.created_at)}
                         </div>
                       </div>
@@ -340,6 +404,199 @@ export default function SuperAdmin({ token, user, onLogout }) {
                     </div>
                   </div>
 
+                  {/* API Key Summary Strip */}
+                  <div style={{ background: '#0D1117', borderRadius: 8,
+                                padding: '10px 16px', marginBottom: 14,
+                                display: 'flex', alignItems: 'center',
+                                justifyContent: 'space-between',
+                                border: '1px solid #21262D' }}>
+                    <div style={{ display: 'flex', gap: 24 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#8B949E',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: 1 }}>
+                          API Keys
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 'bold',
+                                      color: expandedApi === company.id
+                                        ? '#FFB800' : '#F0F6FC' }}>
+                          {expandedApi === company.id
+                            ? companyApiKeys.filter(k => k.active).length
+                            : 'Click to view'}
+                        </div>
+                      </div>
+                      {expandedApi === company.id && hasApiKeys && (
+                        <>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#8B949E',
+                                          textTransform: 'uppercase',
+                                          letterSpacing: 1 }}>
+                              Requests Today
+                            </div>
+                            <div style={{ fontSize: 16, fontWeight: 'bold',
+                                          color: '#4CC9F0' }}>
+                              {todayApiRequests}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#8B949E',
+                                          textTransform: 'uppercase',
+                                          letterSpacing: 1 }}>
+                              Total Requests
+                            </div>
+                            <div style={{ fontSize: 16, fontWeight: 'bold',
+                                          color: '#52B788' }}>
+                              {totalApiRequests}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <button onClick={() => handleToggleApi(company.id)}
+                      style={{ background: '#21262D',
+                               border: '1px solid #30363D',
+                               color: '#8B949E', padding: '6px 14px',
+                               borderRadius: 6, cursor: 'pointer',
+                               fontSize: 12 }}>
+                      {expandedApi === company.id
+                        ? 'Hide API Info' : 'View API Info'}
+                    </button>
+                  </div>
+
+                  {/* API Keys Detail — Expanded */}
+                  {expandedApi === company.id && (
+                    <div style={{ background: '#0D1117', borderRadius: 10,
+                                  padding: 16, marginBottom: 14,
+                                  border: '1px solid #21262D' }}>
+                      <div style={{ color: '#FFB800', fontWeight: 'bold',
+                                    fontSize: 13, marginBottom: 12 }}>
+                        API Keys for {company.name}
+                      </div>
+
+                      {companyApiKeys.length === 0 ? (
+                        <div style={{ color: '#8B949E', fontSize: 13,
+                                      padding: '12px 0' }}>
+                          No API keys generated yet for this company.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex',
+                                      flexDirection: 'column', gap: 10 }}>
+                          {companyApiKeys.map(key => (
+                            <div key={key.id}
+                              style={{ background: '#161B22',
+                                       borderRadius: 8,
+                                       padding: '12px 16px',
+                                       border: `1px solid ${key.active
+                                         ? '#30363D' : '#4A0404'}`,
+                                       opacity: key.active ? 1 : 0.6 }}>
+                              <div style={{ display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'flex-start',
+                                            marginBottom: 8 }}>
+                                <div>
+                                  <div style={{ color: '#F0F6FC',
+                                                fontWeight: 'bold',
+                                                fontSize: 14 }}>
+                                    {key.name}
+                                  </div>
+                                  <div style={{ color: '#8B949E',
+                                                fontSize: 11, marginTop: 2 }}>
+                                    Created {fmt(key.created_at)} ·
+                                    Last used {fmt(key.last_used_at)}
+                                  </div>
+                                </div>
+                                <span style={{
+                                  background: key.active
+                                    ? '#1B4332' : '#4A0404',
+                                  color: key.active ? '#52B788' : '#FF6B6B',
+                                  padding: '2px 10px', borderRadius: 8,
+                                  fontSize: 11, fontWeight: 'bold'
+                                }}>
+                                  {key.active ? 'Active' : 'Revoked'}
+                                </span>
+                              </div>
+
+                              {/* Key value */}
+                              <div style={{ background: '#0D1117',
+                                            borderRadius: 6, padding: '8px 12px',
+                                            marginBottom: 10 }}>
+                                <code style={{ color: '#4CC9F0', fontSize: 11,
+                                               fontFamily: 'monospace',
+                                               wordBreak: 'break-all' }}>
+                                  {key.key_value}
+                                </code>
+                              </div>
+
+                              {/* Usage stats */}
+                              <div style={{ display: 'flex', gap: 20 }}>
+                                <div>
+                                  <div style={{ fontSize: 10,
+                                                color: '#8B949E',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: 1 }}>
+                                    Today
+                                  </div>
+                                  <div style={{ fontSize: 15,
+                                                fontWeight: 'bold',
+                                                color: '#FF6B35' }}>
+                                    {key.requests_today}
+                                    <span style={{ fontSize: 10,
+                                                   color: '#8B949E',
+                                                   fontWeight: 'normal' }}>
+                                      {' '}/1000
+                                    </span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 10,
+                                                color: '#8B949E',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: 1 }}>
+                                    All Time
+                                  </div>
+                                  <div style={{ fontSize: 15,
+                                                fontWeight: 'bold',
+                                                color: '#52B788' }}>
+                                    {key.requests_total}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Usage bar */}
+                              <div style={{ background: '#21262D',
+                                            borderRadius: 4, height: 4,
+                                            marginTop: 8 }}>
+                                <div style={{
+                                  width: `${Math.min(
+                                    (key.requests_today / 1000) * 100, 100)}%`,
+                                  background: key.requests_today > 800
+                                    ? '#E63946' : '#4CC9F0',
+                                  height: '100%', borderRadius: 4
+                                }}/>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* API not connected notice */}
+                      {companyApiKeys.filter(k => k.active).length === 0 && (
+                        <div style={{ marginTop: 12, padding: '10px 14px',
+                                      background: '#1C2B4A', borderRadius: 8,
+                                      border: '1px solid #4CC9F0' }}>
+                          <div style={{ color: '#4CC9F0', fontSize: 12 }}>
+                            This company has not connected any external
+                            systems via API yet. Contact them on
+                            <strong style={{ color: '#FFB800' }}>
+                              {' '}0996 175 162
+                            </strong>
+                            {' '}to upsell API access.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Actions Row */}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap',
                                 paddingTop: 14,
@@ -350,7 +607,8 @@ export default function SuperAdmin({ token, user, onLogout }) {
                       style={{ background: company.active
                                  ? '#4A0404' : '#1B4332',
                                border: 'none',
-                               color: company.active ? '#FF6B6B' : '#52B788',
+                               color: company.active
+                                 ? '#FF6B6B' : '#52B788',
                                padding: '8px 16px', borderRadius: 6,
                                cursor: 'pointer', fontWeight: 'bold',
                                fontSize: 12 }}>
@@ -364,9 +622,11 @@ export default function SuperAdmin({ token, user, onLogout }) {
                         placeholder="Days"
                         value={extendDays[company.id] || ''}
                         onChange={(e) => setExtendDays({
-                          ...extendDays, [company.id]: e.target.value })}
+                          ...extendDays,
+                          [company.id]: e.target.value })}
                         style={{ width: 64, padding: '7px 8px',
-                                 borderRadius: 6, border: '1px solid #30363D',
+                                 borderRadius: 6,
+                                 border: '1px solid #30363D',
                                  background: '#21262D', color: '#F0F6FC',
                                  fontSize: 12, textAlign: 'center' }}/>
                       <button onClick={() => handleExtend(company)}
@@ -382,8 +642,7 @@ export default function SuperAdmin({ token, user, onLogout }) {
                     {/* Activate Subscription */}
                     <div style={{ display: 'flex', gap: 4,
                                   alignItems: 'center' }}>
-                      <select
-                        value={activateMonths[company.id] || 1}
+                      <select value={activateMonths[company.id] || 1}
                         onChange={(e) => setActivateMonths({
                           ...activateMonths,
                           [company.id]: e.target.value })}
