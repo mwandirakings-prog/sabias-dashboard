@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 import Register from './Register';
@@ -19,6 +19,30 @@ export default function Login({ onLogin }) {
   const [forgotError, setForgotError] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotRole, setForgotRole] = useState('');
+
+  // ── PWA INSTALL PROMPT ────────────────────────────────
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBanner(false);
+      setInstallPrompt(null);
+    }
+  };
 
   const urlParams = new URLSearchParams(window.location.search);
   const resetToken = urlParams.get('reset');
@@ -98,6 +122,62 @@ export default function Login({ onLogin }) {
     }
   };
 
+  // ── INSTALL BANNER COMPONENT ──────────────────────────
+  const InstallBanner = () => {
+    if (!showInstallBanner) return null;
+    return (
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+        background: '#3E1F00',
+        padding: '12px 16px',
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            background: '#FFB800', color: '#3E1F00',
+            fontWeight: 'bold', fontSize: 14,
+            padding: '4px 10px', borderRadius: 6,
+            letterSpacing: 2,
+          }}>
+            SABIAS
+          </div>
+          <div>
+            <div style={{ color: 'white', fontSize: 13,
+                          fontWeight: 'bold' }}>
+              Install SABIAS App
+            </div>
+            <div style={{ color: '#FFB800', fontSize: 11 }}>
+              Add to your home screen for quick access
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={handleInstall}
+            style={{
+              background: '#FF6B35', border: 'none',
+              color: 'white', padding: '8px 16px',
+              borderRadius: 6, cursor: 'pointer',
+              fontWeight: 'bold', fontSize: 13,
+            }}>
+            Install
+          </button>
+          <button onClick={() => setShowInstallBanner(false)}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'white', padding: '8px 12px',
+              borderRadius: 6, cursor: 'pointer',
+              fontSize: 13,
+            }}>
+            Not now
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // ── RESET PASSWORD SCREEN ─────────────────────────────
   if (showReset) return (
     <div style={{ minHeight: '100vh', background: '#FFF8F0',
@@ -105,6 +185,7 @@ export default function Login({ onLogin }) {
                   alignItems: 'center', justifyContent: 'center',
                   padding: '20px 16px', boxSizing: 'border-box',
                   fontFamily: 'Arial' }}>
+      <InstallBanner/>
 
       <div style={{ textAlign: 'center', marginBottom: 28,
                     width: '100%', maxWidth: 420 }}>
@@ -220,6 +301,7 @@ export default function Login({ onLogin }) {
                   alignItems: 'center', justifyContent: 'center',
                   padding: '20px 16px', boxSizing: 'border-box',
                   fontFamily: 'Arial' }}>
+      <InstallBanner/>
 
       <div style={{ textAlign: 'center', marginBottom: 28,
                     width: '100%', maxWidth: 420 }}>
@@ -346,8 +428,11 @@ export default function Login({ onLogin }) {
                   padding: '20px 16px', boxSizing: 'border-box',
                   fontFamily: 'Arial' }}>
 
+      <InstallBanner/>
+
       <div style={{ textAlign: 'center', marginBottom: 28,
-                    width: '100%', maxWidth: 420 }}>
+                    width: '100%', maxWidth: 420,
+                    marginTop: showInstallBanner ? 60 : 0 }}>
         <div style={{ background: '#3E1F00', borderRadius: 16,
                       padding: '16px 24px', display: 'block',
                       marginBottom: 12 }}>
@@ -489,7 +574,7 @@ export default function Login({ onLogin }) {
 
       <div style={{ marginTop: 24, color: '#BBB', fontSize: 11,
                     textAlign: 'center', padding: '0 16px' }}>
-        SABIAS © 2026 · Sales & Business Intelligence Analytics System
+        SABIAS 2026 · Sales & Business Intelligence Analytics System
       </div>
     </div>
   );
