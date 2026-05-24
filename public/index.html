@@ -3,18 +3,44 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='12' fill='%233E1F00'/><text y='72' x='50' text-anchor='middle' font-size='52' font-family='Arial' font-weight='bold' fill='%23FFB800'>S</text></svg>"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#3E1F00" />
-    <meta
-      name="description"
-      content="SABIAS — Sales and Business Intelligence Analytics System. Built in Malawi for Malawian businesses. Track sales, manage inventory and grow smarter."
-    />
+    <meta name="description" content="SABIAS — Sales and Business Intelligence Analytics System. Built in Malawi for Malawian businesses. Track sales, manage inventory and grow smarter."/>
+
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+    <meta name="apple-mobile-web-app-title" content="SABIAS"/>
+    <meta name="application-name" content="SABIAS"/>
+    <meta name="msapplication-TileColor" content="#3E1F00"/>
+
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>SABIAS Analytics </title>
+
+    <title>SABIAS Analytics</title>
   </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+  <body style="margin:0; padding:0; font-family: Arial, sans-serif;">
+    <noscript>
+      <div style="text-align:center; padding:40px; font-family:Arial;">
+        <h2 style="color:#3E1F00;">SABIAS Analytics</h2>
+        <p>You need to enable JavaScript to run this app.</p>
+        <p>Please enable JavaScript in your browser settings and refresh the page.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(reg) {
+              console.log('SABIAS SW registered');
+            })
+            .catch(function(err) {
+              console.log('SW error:', err);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
