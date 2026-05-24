@@ -1,25 +1,11 @@
-const CACHE_NAME = 'sabias-v2';
-
-self.addEventListener('install', event => {
-  self.skipWaiting();
-});
-
+// SABIAS SW — clears all caches, no caching
+self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames =>
-      Promise.all(
-        cacheNames.map(name => caches.delete(name))
-      )
+    caches.keys().then(keys =>
+      Promise.all(keys.map(key => caches.delete(key)))
     )
   );
   self.clients.claim();
 });
-
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match('/index.html');
-    })
-  );
-});
+self.addEventListener('fetch', () => {});
