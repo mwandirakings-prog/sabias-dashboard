@@ -33,7 +33,7 @@ export default function TrialBanner({ token, onLocked, user }) {
 
   if (!status) return null;
 
-  const { status: s, daysLeft, message, dailyCount,
+  const { status: s, daysLeft, dailyCount,
           dailyLimit, remaining, limited } = status;
 
   // Active subscription or active trial with plenty of days — no banner
