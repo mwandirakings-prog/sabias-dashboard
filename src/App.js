@@ -12,7 +12,7 @@ import Forecasting from './pages/admin/Forecasting';
 import Analytics from './pages/admin/Analytics';
 import UserManagement from './pages/admin/UserManagement';
 import Inventory from './pages/admin/Inventory';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
 import Login from './Login';
 import Sidebar from './components/Sidebar';
@@ -26,6 +26,7 @@ import ViewerDashboard from './pages/viewer/ViewerDashboard';
 import SuperAdmin from './SuperAdmin';
 import TrialBanner from './TrialBanner';
 import LockedScreen from './LockedScreen';
+import SubscribePage from './SubscribePage';
 
 /* eslint-disable no-unused-vars */
 const ComingSoon = ({ page }) => (
@@ -33,6 +34,104 @@ const ComingSoon = ({ page }) => (
     <div style={{ fontSize: 48, marginBottom: 16 }}>🚧</div>
     <h2 style={{ color: '#3E1F00' }}>{page} — Coming Soon</h2>
     <p style={{ color: '#888' }}>This module is under construction.</p>
+  </div>
+);
+
+// ── PAYMENT SUCCESS / FAILED SCREENS ─────────────────────
+const PaymentSuccess = ({ onContinue }) => (
+  <div style={{
+    minHeight: '100vh', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', background: '#FFF8F0',
+    fontFamily: 'Arial', padding: 24
+  }}>
+    <div style={{
+      background: 'white', borderRadius: 16, padding: 40,
+      maxWidth: 460, width: '100%', textAlign: 'center',
+      boxShadow: '0 8px 32px rgba(62,31,0,0.1)'
+    }}>
+      <div style={{
+        width: 80, height: 80, borderRadius: '50%',
+        background: '#E8F5E9', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', margin: '0 auto 20px',
+        fontSize: 36
+      }}>
+        ✓
+      </div>
+      <div style={{
+        color: '#2D6A4F', fontWeight: 'bold',
+        fontSize: 22, marginBottom: 10
+      }}>
+        Payment Successful!
+      </div>
+      <div style={{
+        color: '#555', fontSize: 14, lineHeight: 1.7,
+        marginBottom: 28
+      }}>
+        Your SABIAS subscription has been activated.
+        You now have unlimited access to all features.
+        A confirmation email has been sent to you.
+      </div>
+      <button onClick={onContinue} style={{
+        background: '#FF6B35', border: 'none', color: 'white',
+        padding: '12px 32px', borderRadius: 10, cursor: 'pointer',
+        fontWeight: 'bold', fontSize: 15, fontFamily: 'Arial'
+      }}>
+        Continue to SABIAS
+      </button>
+    </div>
+  </div>
+);
+
+const PaymentFailed = ({ onTryAgain, onContinue }) => (
+  <div style={{
+    minHeight: '100vh', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', background: '#FFF8F0',
+    fontFamily: 'Arial', padding: 24
+  }}>
+    <div style={{
+      background: 'white', borderRadius: 16, padding: 40,
+      maxWidth: 460, width: '100%', textAlign: 'center',
+      boxShadow: '0 8px 32px rgba(62,31,0,0.1)'
+    }}>
+      <div style={{
+        width: 80, height: 80, borderRadius: '50%',
+        background: '#FFEBEE', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', margin: '0 auto 20px',
+        fontSize: 36
+      }}>
+        ✗
+      </div>
+      <div style={{
+        color: '#C62828', fontWeight: 'bold',
+        fontSize: 22, marginBottom: 10
+      }}>
+        Payment Not Completed
+      </div>
+      <div style={{
+        color: '#555', fontSize: 14, lineHeight: 1.7,
+        marginBottom: 28
+      }}>
+        The payment was not completed. No money has been charged.
+        You can try again or contact us on WhatsApp 0996 175 162
+        for help.
+      </div>
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+        <button onClick={onTryAgain} style={{
+          background: '#FF6B35', border: 'none', color: 'white',
+          padding: '12px 24px', borderRadius: 10, cursor: 'pointer',
+          fontWeight: 'bold', fontSize: 14, fontFamily: 'Arial'
+        }}>
+          Try Again
+        </button>
+        <button onClick={onContinue} style={{
+          background: 'transparent', border: '1px solid #FFE8D0',
+          color: '#7A5C3A', padding: '12px 24px', borderRadius: 10,
+          cursor: 'pointer', fontSize: 14, fontFamily: 'Arial'
+        }}>
+          Continue Anyway
+        </button>
+      </div>
+    </div>
   </div>
 );
 
@@ -86,7 +185,7 @@ function AdminApp({ user, token, logout }) {
             <strong style={{ color: '#3E1F00' }}>{user?.name}</strong>
           </div>
         </div>
-        <TrialBanner token={token} onLocked={handleLocked}/>
+        <TrialBanner token={token} user={user} onLocked={handleLocked}/>
         {renderPage()}
       </div>
     </div>
@@ -137,7 +236,7 @@ function SalespersonApp({ user, token, logout }) {
             <strong style={{ color: '#3E1F00' }}>{user?.name}</strong>
           </div>
         </div>
-        <TrialBanner token={token} onLocked={handleLocked}/>
+        <TrialBanner token={token} user={user} onLocked={handleLocked}/>
         {renderPage()}
       </div>
     </div>
@@ -190,7 +289,7 @@ function ViewerApp({ user, token, logout }) {
             <strong style={{ color: '#2C3E50' }}>{user?.name}</strong>
           </div>
         </div>
-        <TrialBanner token={token} onLocked={handleLocked}/>
+        <TrialBanner token={token} user={user} onLocked={handleLocked}/>
         {renderPage()}
       </div>
     </div>
@@ -199,6 +298,27 @@ function ViewerApp({ user, token, logout }) {
 
 function AppContent() {
   const { user, token, loading, logout } = useAuth();
+  const [paymentResult, setPaymentResult] = useState(null);
+  const [showSubscribe, setShowSubscribe] = useState(false);
+  const [paymentRef, setPaymentRef] = useState(null);
+
+  // ── Check for payment redirect from OneKhusa ─────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    const ref = params.get('ref');
+
+    if (payment === 'success') {
+      setPaymentResult('success');
+      setPaymentRef(ref);
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (payment === 'failed') {
+      setPaymentResult('failed');
+      setPaymentRef(ref);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -214,7 +334,43 @@ function AppContent() {
 
   if (!user) return <Login onLogin={() => {}}/>;
 
-  // ── SUPER ADMIN — full separate portal ───────────────────
+  // ── Payment success screen ────────────────────────────────
+  if (paymentResult === 'success') {
+    return (
+      <PaymentSuccess onContinue={() => setPaymentResult(null)}/>
+    );
+  }
+
+  // ── Payment failed screen ─────────────────────────────────
+  if (paymentResult === 'failed') {
+    return (
+      <PaymentFailed
+        onTryAgain={() => {
+          setPaymentResult(null);
+          setShowSubscribe(true);
+        }}
+        onContinue={() => setPaymentResult(null)}
+      />
+    );
+  }
+
+  // ── Subscribe modal triggered from failed payment ─────────
+  if (showSubscribe && user) {
+    return (
+      <>
+        <SubscribePage
+          token={token}
+          user={user}
+          onClose={() => setShowSubscribe(false)}
+          dailyCount={0}
+          dailyLimit={10}
+          isFullAccess={false}
+        />
+      </>
+    );
+  }
+
+  // ── SUPER ADMIN ───────────────────────────────────────────
   if (user.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
     return <SuperAdmin user={user} token={token} onLogout={logout}/>;
   }
