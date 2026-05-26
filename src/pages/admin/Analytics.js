@@ -110,7 +110,8 @@ export default function Analytics({ token, user }) {
     if (i === 0) return { ...m, growth: 0 };
     const prev = parseFloat(monthly[i - 1].revenue || 0);
     const curr = parseFloat(m.revenue || 0);
-    const growth = prev > 0 ? (((curr - prev) / prev) * 100).toFixed(1) : 0;
+    const growth = prev > 0
+      ? (((curr - prev) / prev) * 100).toFixed(1) : 0;
     return { ...m, growth: parseFloat(growth) };
   });
 
@@ -131,8 +132,8 @@ export default function Analytics({ token, user }) {
   return (
     <div style={{ fontFamily: 'Arial' }}>
 
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 20 }}>
           Advanced Analytics
         </h2>
         <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
@@ -140,20 +141,23 @@ export default function Analytics({ token, user }) {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
-                    gap: 16, marginBottom: 16 }}>
+      {/* Charts row 1 — stack on mobile */}
+      <div style={{ display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: 16, marginBottom: 16 }}>
 
-        <div style={{ background: 'white', borderRadius: 12, padding: 20,
+        <div style={{ background: 'white', borderRadius: 12, padding: 16,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
+          <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                        marginBottom: 4, fontSize: 14 }}>
             Revenue & Profit Trend
           </div>
-          <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
+          <div style={{ color: '#888', fontSize: 11, marginBottom: 10 }}>
             Monthly area comparison
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={monthly}
-              margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <defs>
                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#FF6B35" stopOpacity={0.3}/>
@@ -165,9 +169,9 @@ export default function Analytics({ token, user }) {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5"/>
-              <XAxis dataKey="month" tick={{ fontSize: 10 }}
+              <XAxis dataKey="month" tick={{ fontSize: 9 }}
                      tickFormatter={(v) => v?.slice(5)}/>
-              <YAxis tick={{ fontSize: 10 }}
+              <YAxis tick={{ fontSize: 9 }}
                      tickFormatter={(v) => `${(v/1000).toFixed(0)}K`}/>
               <Tooltip formatter={(v, n) => [`MK ${fmt(v)}`, n]}/>
               <Legend/>
@@ -179,21 +183,22 @@ export default function Analytics({ token, user }) {
           </ResponsiveContainer>
         </div>
 
-        <div style={{ background: 'white', borderRadius: 12, padding: 20,
+        <div style={{ background: 'white', borderRadius: 12, padding: 16,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
+          <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                        marginBottom: 4, fontSize: 14 }}>
             Monthly Revenue Growth Rate
           </div>
-          <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
+          <div style={{ color: '#888', fontSize: 11, marginBottom: 10 }}>
             Month over month % change
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={monthlyWithGrowth}
-              margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5"/>
-              <XAxis dataKey="month" tick={{ fontSize: 10 }}
+              <XAxis dataKey="month" tick={{ fontSize: 9 }}
                      tickFormatter={(v) => v?.slice(5)}/>
-              <YAxis tick={{ fontSize: 10 }}
+              <YAxis tick={{ fontSize: 9 }}
                      tickFormatter={(v) => `${v}%`}/>
               <Tooltip formatter={(v) => [`${v}%`, 'Growth Rate']}/>
               <Bar dataKey="growth" name="Growth %" radius={[4,4,0,0]}>
@@ -207,38 +212,43 @@ export default function Analytics({ token, user }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
-                    gap: 16, marginBottom: 16 }}>
+      {/* Charts row 2 */}
+      <div style={{ display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: 16, marginBottom: 16 }}>
 
-        <div style={{ background: 'white', borderRadius: 12, padding: 20,
+        <div style={{ background: 'white', borderRadius: 12, padding: 16,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between',
-                        alignItems: 'center', marginBottom: 4 }}>
-            <div style={{ color: '#3E1F00', fontWeight: 'bold' }}>
+                        alignItems: 'center', marginBottom: 4,
+                        flexWrap: 'wrap', gap: 6 }}>
+            <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                          fontSize: 14 }}>
               Products by Revenue
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
               {['Top 5', 'Top 10', 'Least 5'].map(f => (
                 <button key={f} onClick={() => setProductFilter(f)}
-                  style={{
-                    padding: '3px 8px', borderRadius: 6, border: 'none',
-                    cursor: 'pointer', fontSize: 10, fontWeight: 'bold',
+                  style={{ padding: '3px 7px', borderRadius: 6,
+                    border: 'none', cursor: 'pointer', fontSize: 9,
+                    fontWeight: 'bold',
                     background: productFilter === f ? '#3E1F00' : '#FFF8F0',
-                    color: productFilter === f ? '#FFB800' : '#888',
-                  }}>{f}</button>
+                    color: productFilter === f ? '#FFB800' : '#888' }}>
+                  {f}
+                </button>
               ))}
             </div>
           </div>
-          <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
+          <div style={{ color: '#888', fontSize: 11, marginBottom: 10 }}>
             {productFilter === 'Least 5' ? 'Lowest' : 'Highest'} revenue products
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={displayProducts} layout="vertical"
-              margin={{ top: 5, right: 20, left: 60, bottom: 5 }}>
+              margin={{ top: 5, right: 10, left: 60, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5"/>
-              <XAxis type="number" tick={{ fontSize: 10 }}
+              <XAxis type="number" tick={{ fontSize: 9 }}
                      tickFormatter={(v) => `${(v/1000).toFixed(0)}K`}/>
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }}/>
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }}/>
               <Tooltip formatter={(v) => [`MK ${fmt(v)}`, 'Revenue']}/>
               <Bar dataKey="revenue" radius={[0,4,4,0]}>
                 {displayProducts.map((_, i) => (
@@ -249,18 +259,19 @@ export default function Analytics({ token, user }) {
           </ResponsiveContainer>
         </div>
 
-        <div style={{ background: 'white', borderRadius: 12, padding: 20,
+        <div style={{ background: 'white', borderRadius: 12, padding: 16,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
+          <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                        marginBottom: 4, fontSize: 14 }}>
             Payment Method Analysis
           </div>
-          <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
-            Revenue by payment type including Voucher
+          <div style={{ color: '#888', fontSize: 11, marginBottom: 10 }}>
+            Revenue by payment type
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie data={paymentData} dataKey="value" nameKey="name"
-                   cx="50%" cy="50%" outerRadius={85} innerRadius={40}>
+                   cx="50%" cy="50%" outerRadius={75} innerRadius={35}>
                 {paymentData.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]}/>
                 ))}
@@ -272,21 +283,24 @@ export default function Analytics({ token, user }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
-                    gap: 16, marginBottom: 16 }}>
+      {/* Charts row 3 */}
+      <div style={{ display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: 16, marginBottom: 16 }}>
 
-        <div style={{ background: 'white', borderRadius: 12, padding: 20,
+        <div style={{ background: 'white', borderRadius: 12, padding: 16,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
+          <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                        marginBottom: 4, fontSize: 14 }}>
             Branch Performance Radar
           </div>
-          <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
+          <div style={{ color: '#888', fontSize: 11, marginBottom: 10 }}>
             Revenue vs Profit by branch (MK thousands)
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={200}>
             <RadarChart data={radarData}>
               <PolarGrid/>
-              <PolarAngleAxis dataKey="region" tick={{ fontSize: 11 }}/>
+              <PolarAngleAxis dataKey="region" tick={{ fontSize: 10 }}/>
               <PolarRadiusAxis tick={{ fontSize: 9 }}/>
               <Radar name="Revenue (K)" dataKey="revenue"
                      stroke="#FF6B35" fill="#FF6B35" fillOpacity={0.3}/>
@@ -298,20 +312,21 @@ export default function Analytics({ token, user }) {
           </ResponsiveContainer>
         </div>
 
-        <div style={{ background: 'white', borderRadius: 12, padding: 20,
+        <div style={{ background: 'white', borderRadius: 12, padding: 16,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', marginBottom: 4 }}>
+          <div style={{ color: '#3E1F00', fontWeight: 'bold',
+                        marginBottom: 4, fontSize: 14 }}>
             Category Performance
           </div>
-          <div style={{ color: '#888', fontSize: 11, marginBottom: 12 }}>
+          <div style={{ color: '#888', fontSize: 11, marginBottom: 10 }}>
             Revenue and profit by category
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={categories}
-              margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+              margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5"/>
-              <XAxis dataKey="category" tick={{ fontSize: 10 }}/>
-              <YAxis tick={{ fontSize: 10 }}
+              <XAxis dataKey="category" tick={{ fontSize: 9 }}/>
+              <YAxis tick={{ fontSize: 9 }}
                      tickFormatter={(v) => `${(v/1000).toFixed(0)}K`}/>
               <Tooltip formatter={(v) => [`MK ${fmt(v)}`]}/>
               <Legend/>
@@ -324,68 +339,81 @@ export default function Analytics({ token, user }) {
         </div>
       </div>
 
-      <div style={{ background: 'white', borderRadius: 12, padding: 20,
+      {/* Salesperson Leaderboard */}
+      <div style={{ background: 'white', borderRadius: 12, padding: 16,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ color: '#3E1F00', fontWeight: 'bold',
-                      fontSize: 15, marginBottom: 16 }}>
+                      fontSize: 15, marginBottom: 14 }}>
           Salesperson Leaderboard
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: '#3E1F00' }}>
-              {['Rank','Salesperson','Transactions','Total Revenue',
-                'Total Profit','Margin','Performance'].map(h => (
-                <th key={h} style={{ padding: '10px 14px', color: '#FFB800',
-                  textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {salespersonData.map((sp, i) => {
-              const margin = sp.revenue > 0
-                ? ((sp.profit / sp.revenue) * 100).toFixed(1) : 0;
-              const maxRevenue = salespersonData[0]?.revenue || 1;
-              const pct = ((sp.revenue / maxRevenue) * 100).toFixed(0);
-              return (
-                <tr key={i} style={{
-                  background: i % 2 === 0 ? '#FFF8F0' : 'white',
-                  borderBottom: '1px solid #FFE8D0' }}>
-                  <td style={{ padding: '10px 14px' }}>
-                    <span style={{
-                      background: i === 0 ? '#FFB800' : i === 1 ? '#C0C0C0' :
-                                  i === 2 ? '#CD7F32' : '#EEE',
-                      color: i < 3 ? 'white' : '#888',
-                      width: 28, height: 28, borderRadius: '50%',
-                      display: 'inline-flex', alignItems: 'center',
-                      justifyContent: 'center', fontWeight: 'bold', fontSize: 12
-                    }}>
-                      {i + 1}
-                    </span>
-                  </td>
-                  <td style={{ padding: '10px 14px', fontWeight: '600',
-                               color: '#3E1F00' }}>{sp.name || 'Unknown'}</td>
-                  <td style={{ padding: '10px 14px' }}>{sp.transactions}</td>
-                  <td style={{ padding: '10px 14px', color: '#2D6A4F',
-                               fontWeight: '500' }}>MK {fmt(sp.revenue)}</td>
-                  <td style={{ padding: '10px 14px', color: '#FF6B35',
-                               fontWeight: '500' }}>MK {fmt(sp.profit)}</td>
-                  <td style={{ padding: '10px 14px' }}>{margin}%</td>
-                  <td style={{ padding: '10px 14px', minWidth: 120 }}>
-                    <div style={{ background: '#FFE8D0', borderRadius: 10,
-                                  height: 8, overflow: 'hidden' }}>
-                      <div style={{ background: '#FF6B35', height: '100%',
-                                    width: `${pct}%`, borderRadius: 10,
-                                    transition: 'width 0.5s ease' }}/>
-                    </div>
-                    <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
-                      {pct}% of top
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse',
+                          fontSize: 12, minWidth: 600 }}>
+            <thead>
+              <tr style={{ background: '#3E1F00' }}>
+                {['Rank','Salesperson','Transactions','Revenue',
+                  'Profit','Margin','Performance'].map(h => (
+                  <th key={h} style={{ padding: '10px 12px', color: '#FFB800',
+                    textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {salespersonData.map((sp, i) => {
+                const margin = sp.revenue > 0
+                  ? ((sp.profit / sp.revenue) * 100).toFixed(1) : 0;
+                const maxRevenue = salespersonData[0]?.revenue || 1;
+                const pct = ((sp.revenue / maxRevenue) * 100).toFixed(0);
+                return (
+                  <tr key={i} style={{
+                    background: i % 2 === 0 ? '#FFF8F0' : 'white',
+                    borderBottom: '1px solid #FFE8D0' }}>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span style={{
+                        background: i === 0 ? '#FFB800'
+                          : i === 1 ? '#C0C0C0'
+                          : i === 2 ? '#CD7F32' : '#EEE',
+                        color: i < 3 ? 'white' : '#888',
+                        width: 26, height: 26, borderRadius: '50%',
+                        display: 'inline-flex', alignItems: 'center',
+                        justifyContent: 'center', fontWeight: 'bold',
+                        fontSize: 11 }}>
+                        {i + 1}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px', fontWeight: '600',
+                                 color: '#3E1F00' }}>
+                      {sp.name || 'Unknown'}
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      {sp.transactions}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#2D6A4F',
+                                 fontWeight: '500' }}>
+                      MK {fmt(sp.revenue)}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#FF6B35',
+                                 fontWeight: '500' }}>
+                      MK {fmt(sp.profit)}
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>{margin}%</td>
+                    <td style={{ padding: '10px 12px', minWidth: 100 }}>
+                      <div style={{ background: '#FFE8D0', borderRadius: 10,
+                                    height: 7, overflow: 'hidden' }}>
+                        <div style={{ background: '#FF6B35', height: '100%',
+                          width: `${pct}%`, borderRadius: 10,
+                          transition: 'width 0.5s ease' }}/>
+                      </div>
+                      <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
+                        {pct}% of top
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

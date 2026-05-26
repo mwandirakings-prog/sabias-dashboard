@@ -76,13 +76,10 @@ export default function Inventory({ token, user }) {
   const handleEdit = (item) => {
     setEditItem(item);
     setForm({
-      product: item.product,
-      category: item.category,
-      unit_price: item.unit_price,
-      unit_cost: item.unit_cost,
+      product: item.product, category: item.category,
+      unit_price: item.unit_price, unit_cost: item.unit_cost,
       quantity_in_stock: item.quantity_in_stock,
-      reorder_level: item.reorder_level,
-      supplier: item.supplier,
+      reorder_level: item.reorder_level, supplier: item.supplier,
     });
     setShowForm(true);
   };
@@ -99,46 +96,33 @@ export default function Inventory({ token, user }) {
   };
 
   const getStockStatus = (qty, reorder) => {
-    if (qty === 0) return {
-      label: 'Out of Stock', color: '#C62828', bg: '#FFEBEE'
-    };
-    if (qty <= reorder) return {
-      label: 'Low Stock', color: '#E65100', bg: '#FFF3E0'
-    };
+    if (qty === 0) return { label: 'Out of Stock', color: '#C62828', bg: '#FFEBEE' };
+    if (qty <= reorder) return { label: 'Low Stock', color: '#E65100', bg: '#FFF3E0' };
     return { label: 'In Stock', color: '#2E7D32', bg: '#E8F5E9' };
   };
 
-  const categories = ['All',
-    ...new Set(inventory.map(i => i.category).filter(Boolean))];
+  const categories = ['All', ...new Set(inventory.map(i => i.category).filter(Boolean))];
 
   const filtered = inventory.filter(i => {
     const matchSearch = search === '' ||
       i.product?.toLowerCase().includes(search.toLowerCase()) ||
       i.supplier?.toLowerCase().includes(search.toLowerCase());
-    const matchCat = filterCategory === 'All' ||
-      i.category === filterCategory;
+    const matchCat = filterCategory === 'All' || i.category === filterCategory;
     return matchSearch && matchCat;
   });
 
   const KPICard = ({ label, value, color, sub }) => (
-    <div style={{ background: 'white', borderRadius: 12, padding: 20,
+    <div style={{ background: 'white', borderRadius: 12, padding: 16,
       borderLeft: `4px solid ${color}`,
       boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-      <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
-        {label}
-      </div>
-      <div style={{ color: '#3E1F00', fontSize: 20, fontWeight: 'bold' }}>
-        {value}
-      </div>
-      {sub && (
-        <div style={{ color: '#AAA', fontSize: 11, marginTop: 4 }}>{sub}</div>
-      )}
+      <div style={{ color: '#888', fontSize: 11, marginBottom: 6 }}>{label}</div>
+      <div style={{ color: '#3E1F00', fontSize: 18, fontWeight: 'bold' }}>{value}</div>
+      {sub && <div style={{ color: '#AAA', fontSize: 10, marginTop: 3 }}>{sub}</div>}
     </div>
   );
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 80,
-                  color: '#3E1F00', fontSize: 18 }}>
+    <div style={{ textAlign: 'center', padding: 80, color: '#3E1F00', fontSize: 18 }}>
       Loading Inventory...
     </div>
   );
@@ -146,10 +130,12 @@ export default function Inventory({ token, user }) {
   return (
     <div style={{ fontFamily: 'Arial' }}>
 
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'flex-start', marginBottom: 24 }}>
+                    alignItems: 'flex-start', marginBottom: 20,
+                    flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
+          <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 20 }}>
             Inventory Management
           </h2>
           <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
@@ -160,101 +146,94 @@ export default function Inventory({ token, user }) {
           </p>
         </div>
         <button onClick={() => {
-          setShowForm(!showForm);
-          setEditItem(null);
-          setForm({
-            product: '', category: '', unit_price: '', unit_cost: '',
-            quantity_in_stock: '', reorder_level: '', supplier: ''
-          });
+          setShowForm(!showForm); setEditItem(null);
+          setForm({ product: '', category: '', unit_price: '', unit_cost: '',
+            quantity_in_stock: '', reorder_level: '', supplier: '' });
         }}
           style={{ background: '#FF6B35', border: 'none', color: 'white',
-                   padding: '10px 20px', borderRadius: 8, cursor: 'pointer',
-                   fontWeight: 'bold', fontSize: 14 }}>
+            padding: '10px 18px', borderRadius: 8, cursor: 'pointer',
+            fontWeight: 'bold', fontSize: 14 }}>
           + Add Product
         </button>
       </div>
 
       {successMsg && (
         <div style={{ background: '#E8F5E9', border: '1px solid #A5D6A7',
-                      borderRadius: 8, padding: '12px 16px', marginBottom: 20,
-                      color: '#2E7D32', fontWeight: 'bold' }}>
+          borderRadius: 8, padding: '10px 16px', marginBottom: 16,
+          color: '#2E7D32', fontWeight: 'bold' }}>
           ✓ {successMsg}
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 16, marginBottom: 16 }}>
-        <KPICard label="Total Products"
-                 value={fmt(summary?.total_products)}
-                 color="#FF6B35" sub="Distinct products"/>
-        <KPICard label="Total Units in Stock"
-                 value={fmt(summary?.total_units)}
-                 color="#2D6A4F" sub="All products combined"/>
+      {/* KPI Cards — mobile responsive */}
+      <div style={{ display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+        gap: 12, marginBottom: 12 }}>
+        <KPICard label="Total Products" value={fmt(summary?.total_products)}
+          color="#FF6B35" sub="Distinct products"/>
+        <KPICard label="Units in Stock" value={fmt(summary?.total_units)}
+          color="#2D6A4F" sub="All combined"/>
         <KPICard label="Retail Value"
-                 value={`MK ${fmt(summary?.total_retail_value)}`}
-                 color="#FFB800" sub="At selling price"/>
+          value={`MK ${fmt(summary?.total_retail_value)}`}
+          color="#FFB800" sub="At selling price"/>
       </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+        gap: 12, marginBottom: 20 }}>
         <KPICard label="Cost Value"
-                 value={`MK ${fmt(summary?.total_cost_value)}`}
-                 color="#457B9D" sub="At purchase price"/>
-        <KPICard label="Low Stock Items"
-                 value={fmt(summary?.low_stock)}
-                 color="#E63946" sub="Need reordering"/>
-        <KPICard label="Out of Stock"
-                 value={fmt(summary?.out_of_stock)}
-                 color="#9B5DE5" sub="Zero inventory"/>
+          value={`MK ${fmt(summary?.total_cost_value)}`}
+          color="#457B9D" sub="At purchase price"/>
+        <KPICard label="Low Stock" value={fmt(summary?.low_stock)}
+          color="#E63946" sub="Need reordering"/>
+        <KPICard label="Out of Stock" value={fmt(summary?.out_of_stock)}
+          color="#9B5DE5" sub="Zero inventory"/>
       </div>
 
+      {/* Add / Edit Form */}
       {showForm && (
-        <div style={{ background: 'white', borderRadius: 12, padding: 24,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                      marginBottom: 24 }}>
-          <h3 style={{ color: '#3E1F00', marginTop: 0 }}>
+        <div style={{ background: 'white', borderRadius: 12, padding: 20,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
+          <h3 style={{ color: '#3E1F00', marginTop: 0, fontSize: 16 }}>
             {editItem ? 'Update Product' : 'Add New Product'}
           </h3>
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid',
-                          gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: 12 }}>
               {[
                 { label: 'Product Name', key: 'product', type: 'text' },
                 { label: 'Category', key: 'category', type: 'text' },
                 { label: 'Unit Price (MWK)', key: 'unit_price', type: 'number' },
                 { label: 'Unit Cost (MWK)', key: 'unit_cost', type: 'number' },
-                { label: 'Quantity in Stock', key: 'quantity_in_stock',
-                  type: 'number' },
+                { label: 'Qty in Stock', key: 'quantity_in_stock', type: 'number' },
                 { label: 'Reorder Level', key: 'reorder_level', type: 'number' },
                 { label: 'Supplier', key: 'supplier', type: 'text' },
               ].map(({ label, key, type }) => (
                 <div key={key}>
-                  <label style={{ fontSize: 11, color: '#555',
-                                  fontWeight: 'bold', display: 'block',
-                                  marginBottom: 6 }}>
+                  <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
+                    display: 'block', marginBottom: 5 }}>
                     {label} <span style={{ color: '#FF6B35' }}>*</span>
                   </label>
                   <input type={type} required value={form[key]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                    style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
-                             border: '1.5px solid #FFB800', fontSize: 13,
-                             boxSizing: 'border-box', background: '#FFFDF8' }}/>
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 7,
+                      border: '1.5px solid #FFB800', fontSize: 13,
+                      boxSizing: 'border-box', background: '#FFFDF8' }}/>
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+            <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
               <button type="submit" disabled={submitting}
                 style={{ background: '#FF6B35', border: 'none', color: 'white',
-                         padding: '10px 28px', borderRadius: 8, cursor: 'pointer',
-                         fontWeight: 'bold', fontSize: 14 }}>
-                {submitting ? 'Saving...'
-                  : editItem ? 'Update Product' : 'Add Product'}
+                  padding: '10px 24px', borderRadius: 8, cursor: 'pointer',
+                  fontWeight: 'bold', fontSize: 13 }}>
+                {submitting ? 'Saving...' : editItem ? 'Update' : 'Add Product'}
               </button>
               <button type="button"
                 onClick={() => { setShowForm(false); setEditItem(null); }}
                 style={{ background: '#3E1F00', border: 'none', color: '#FFB800',
-                         padding: '10px 28px', borderRadius: 8, cursor: 'pointer',
-                         fontWeight: 'bold', fontSize: 14 }}>
+                  padding: '10px 24px', borderRadius: 8, cursor: 'pointer',
+                  fontWeight: 'bold', fontSize: 13 }}>
                 Cancel
               </button>
             </div>
@@ -262,30 +241,30 @@ export default function Inventory({ token, user }) {
         </div>
       )}
 
-      <div style={{ background: 'white', borderRadius: 12, padding: 20,
+      {/* Stock Table */}
+      <div style={{ background: 'white', borderRadius: 12, padding: 16,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between',
-                      alignItems: 'center', marginBottom: 16,
-                      flexWrap: 'wrap', gap: 10 }}>
+          alignItems: 'center', marginBottom: 14,
+          flexWrap: 'wrap', gap: 10 }}>
           <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 15 }}>
             Stock List ({filtered.length} products)
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input placeholder="Search product or supplier..."
               value={search} onChange={(e) => setSearch(e.target.value)}
               style={{ padding: '8px 12px', borderRadius: 8,
-                       border: '1px solid #FFB800', fontSize: 13,
-                       width: 220 }}/>
+                border: '1px solid #FFB800', fontSize: 13, minWidth: 160 }}/>
             <select value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: 8,
-                       border: '1px solid #FFB800', fontSize: 13 }}>
+              style={{ padding: '8px 10px', borderRadius: 8,
+                border: '1px solid #FFB800', fontSize: 13 }}>
               {categories.map(c => <option key={c}>{c}</option>)}
             </select>
             <button onClick={fetchData}
-              style={{ padding: '8px 16px', background: '#FF6B35',
-                       border: 'none', borderRadius: 8, color: 'white',
-                       cursor: 'pointer', fontSize: 13 }}>
+              style={{ padding: '8px 14px', background: '#FF6B35',
+                border: 'none', borderRadius: 8, color: 'white',
+                cursor: 'pointer', fontSize: 13 }}>
               Refresh
             </button>
           </div>
@@ -293,13 +272,12 @@ export default function Inventory({ token, user }) {
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse',
-                          fontSize: 13 }}>
+                          fontSize: 12, minWidth: 700 }}>
             <thead>
               <tr style={{ background: '#3E1F00' }}>
                 {['Product','Category','Supplier','Unit Price','Unit Cost',
-                  'In Stock','Reorder Level','Stock Value',
-                  'Status','Actions'].map(h => (
-                  <th key={h} style={{ padding: '10px 12px', color: '#FFB800',
+                  'In Stock','Reorder','Value','Status','Actions'].map(h => (
+                  <th key={h} style={{ padding: '10px 10px', color: '#FFB800',
                     textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -312,60 +290,58 @@ export default function Inventory({ token, user }) {
                   <tr key={item.id} style={{
                     background: i % 2 === 0 ? '#FFF8F0' : 'white',
                     borderBottom: '1px solid #FFE8D0' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: '600',
+                    <td style={{ padding: '8px 10px', fontWeight: '600',
                                  color: '#3E1F00' }}>{item.product}</td>
-                    <td style={{ padding: '10px 12px' }}>
+                    <td style={{ padding: '8px 10px' }}>
                       <span style={{ background: '#FFF3E0', color: '#E65100',
-                                     padding: '2px 8px', borderRadius: 10,
-                                     fontSize: 11 }}>
+                        padding: '2px 7px', borderRadius: 10, fontSize: 11 }}>
                         {item.category}
                       </span>
                     </td>
-                    <td style={{ padding: '10px 12px', color: '#888' }}>
+                    <td style={{ padding: '8px 10px', color: '#888' }}>
                       {item.supplier}
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right',
+                    <td style={{ padding: '8px 10px', textAlign: 'right',
                                  color: '#2D6A4F', fontWeight: '500' }}>
                       MK {fmt(item.unit_price)}
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right',
+                    <td style={{ padding: '8px 10px', textAlign: 'right',
                                  color: '#888' }}>
                       MK {fmt(item.unit_cost)}
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right',
-                                 fontWeight: 'bold', fontSize: 14,
-                                 color: status.color }}>
+                    <td style={{ padding: '8px 10px', textAlign: 'right',
+                      fontWeight: 'bold', fontSize: 13, color: status.color }}>
                       {fmt(item.quantity_in_stock)}
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right',
+                    <td style={{ padding: '8px 10px', textAlign: 'right',
                                  color: '#888' }}>
                       {fmt(item.reorder_level)}
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right',
+                    <td style={{ padding: '8px 10px', textAlign: 'right',
                                  color: '#457B9D', fontWeight: '500' }}>
                       MK {fmt(item.quantity_in_stock * item.unit_price)}
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
+                    <td style={{ padding: '8px 10px' }}>
                       <span style={{ background: status.bg, color: status.color,
-                                     padding: '3px 10px', borderRadius: 10,
-                                     fontSize: 11, fontWeight: 'bold' }}>
+                        padding: '2px 8px', borderRadius: 10,
+                        fontSize: 11, fontWeight: 'bold' }}>
                         {status.label}
                       </span>
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                    <td style={{ padding: '8px 10px' }}>
+                      <div style={{ display: 'flex', gap: 5 }}>
                         <button onClick={() => handleEdit(item)}
                           style={{ background: '#FFB800', border: 'none',
-                                   color: '#3E1F00', padding: '4px 10px',
-                                   borderRadius: 6, cursor: 'pointer',
-                                   fontSize: 11, fontWeight: 'bold' }}>
+                            color: '#3E1F00', padding: '3px 8px',
+                            borderRadius: 5, cursor: 'pointer',
+                            fontSize: 11, fontWeight: 'bold' }}>
                           Edit
                         </button>
                         <button onClick={() => handleDelete(item.id)}
                           style={{ background: '#FFEBEE', border: 'none',
-                                   color: '#C62828', padding: '4px 10px',
-                                   borderRadius: 6, cursor: 'pointer',
-                                   fontSize: 11, fontWeight: 'bold' }}>
+                            color: '#C62828', padding: '3px 8px',
+                            borderRadius: 5, cursor: 'pointer',
+                            fontSize: 11, fontWeight: 'bold' }}>
                           Delete
                         </button>
                       </div>
