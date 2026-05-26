@@ -283,7 +283,7 @@ export default function Register({ onBack }) {
     <div style={{
       minHeight: '100vh', background: '#FFF8F0',
       display: 'flex', alignItems: 'center',
-      justifyContent: 'center', fontFamily: 'Arial', padding: 20
+      justifyContent: 'center', fontFamily: 'Arial', padding: 'clamp(12px, 4vw, 20px)'
     }}>
       <div style={{
         background: 'white', borderRadius: 16, padding: 48,
@@ -353,10 +353,11 @@ export default function Register({ onBack }) {
     <div style={{
       minHeight: '100vh', background: '#FFF8F0',
       display: 'flex', alignItems: 'center',
-      justifyContent: 'center', fontFamily: 'Arial', padding: 20
+      justifyContent: 'center', fontFamily: 'Arial', padding: 'clamp(12px, 4vw, 20px)'
     }}>
       <div style={{
-        background: 'white', borderRadius: 16, padding: 40,
+        background: 'white', borderRadius: 16,
+        padding: 'clamp(20px, 5vw, 40px)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
         width: '100%', maxWidth: 560, boxSizing: 'border-box'
       }}>
@@ -466,7 +467,8 @@ export default function Register({ onBack }) {
             </Field>
 
             <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
               gap: 14
             }}>
               <Field label="Phone Number" error={errors.phone} required>
@@ -509,7 +511,7 @@ export default function Register({ onBack }) {
                 fontWeight: 'bold', fontSize: 15, fontFamily: 'Arial',
                 marginTop: 8
               }}>
-              Next — Set Up Admin Account
+              Next-Set Up Admin Account
             </button>
           </div>
         )}
@@ -636,7 +638,7 @@ export default function Register({ onBack }) {
 
             {/* OTP Boxes */}
             <div style={{
-              display: 'flex', gap: 10, justifyContent: 'center',
+              display: 'flex', gap: 8, justifyContent: 'center',
               marginBottom: 20
             }}>
               {otpCode.map((digit, index) => (
@@ -647,14 +649,14 @@ export default function Register({ onBack }) {
                   onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
                   style={{
-                    width: 48, height: 56, textAlign: 'center',
-                    fontSize: 22, fontWeight: 'bold',
+                    width: 38, height: 42, textAlign: 'center',
+                    fontSize: 18, fontWeight: 'bold',
                     border: `2px solid ${otpError ? '#E53935'
                       : digit ? '#FF6B35' : '#FFB800'}`,
-                    borderRadius: 10, outline: 'none',
+                    borderRadius: 8, outline: 'none',
                     fontFamily: 'Arial', color: '#3E1F00',
                     background: digit ? '#FFF3E0' : 'white',
-                    transition: 'all 0.15s'
+                    transition: 'all 0.15s', boxSizing: 'border-box'
                   }}/>
               ))}
             </div>
@@ -714,7 +716,7 @@ export default function Register({ onBack }) {
                 padding: '10px', borderRadius: 8, cursor: 'pointer',
                 fontSize: 13, fontFamily: 'Arial', marginTop: 12
               }}>
-              Back — Change Details
+              Back-Change Details
             </button>
           </div>
         )}
