@@ -15,7 +15,7 @@ export default function UserManagement({ token, user }) {
   const [newPassword, setNewPassword] = useState('');
   const [form, setForm] = useState({
     name: '', email: '', password: '',
-    role: 'salesperson', region: 'Lilongwe'
+    role: 'salesperson', region: ''
   });
 
   const fetchUsers = useCallback(async () => {
@@ -136,7 +136,7 @@ export default function UserManagement({ token, user }) {
           setShowForm(!showForm); setEditUser(null);
           setShowPasswordForm(false);
           setForm({ name: '', email: '', password: '',
-                    role: 'salesperson', region: 'Lilongwe' });
+                    role: 'salesperson', region: '' });
         }}
           style={{ background: '#FF6B35', border: 'none', color: 'white',
             padding: '10px 18px', borderRadius: 8, cursor: 'pointer',
@@ -236,19 +236,16 @@ export default function UserManagement({ token, user }) {
               </div>
               <div>
                 <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
-                  display: 'block', marginBottom: 5 }}>Branch *</label>
-                <select required value={form.region}
+                  display: 'block', marginBottom: 5 }}>Branch</label>
+                <input type="text" value={form.region}
                   onChange={(e) => setForm({ ...form, region: e.target.value })}
+                  placeholder="e.g. Blantyre, Lilongwe..."
                   style={{ width: '100%', padding: '9px 11px', borderRadius: 7,
                     border: '1.5px solid #FFB800', fontSize: 13,
-                    boxSizing: 'border-box' }}>
-                  <option value="all">All Branches</option>
-                  <option value="Lilongwe">Lilongwe</option>
-                  <option value="Blantyre">Blantyre</option>
-                  <option value="Mzuzu">Mzuzu</option>
-                  <option value="Kasungu">Kasungu</option>
-                  <option value="Zomba">Zomba</option>
-                </select>
+                    boxSizing: 'border-box' }}/>
+                <div style={{ color: '#AAA', fontSize: 10, marginTop: 3 }}>
+                  Leave blank for all branches
+                </div>
               </div>
             </div>
             <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
