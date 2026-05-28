@@ -6,7 +6,7 @@ import {
   BarChart, Bar, Cell
 } from 'recharts';
 
-const API = 'https://malawi-sales-backend.onrender.com';
+const API = 'https://api.sabiasanalytics.com';
 const COLORS = ['#FF6B35','#FFB800','#2D6A4F','#3E1F00','#E63946','#457B9D'];
 
 export default function Forecasting({ token, user }) {

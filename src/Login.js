@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from './AuthContext';
 import Register from './Register';
 
-const API = 'https://malawi-sales-backend.onrender.com';
+const API = 'https://api.sabiasanalytics.com';
 
 export default function Login({ onLogin }) {
   const { login } = useAuth();

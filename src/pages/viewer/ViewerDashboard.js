@@ -3,7 +3,7 @@ import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
          ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
 
-const API = 'https://malawi-sales-backend.onrender.com';
+const API = 'https://api.sabiasanalytics.com';
 const COLORS = ['#FF6B35','#FFB800','#2D6A4F','#3E1F00','#E63946','#457B9D','#9B5DE5','#F72585','#4CC9F0','#7B2D8B'];
 
 export default function ViewerDashboard({ token, user }) {

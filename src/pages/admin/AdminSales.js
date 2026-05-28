@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API = 'https://malawi-sales-backend.onrender.com';
+const API = 'https://api.sabiasanalytics.com';
 
 export default function AdminSales({ token, user }) {
   const [sales, setSales] = useState([]);

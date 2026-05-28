@@ -5,7 +5,7 @@ import {
   Tooltip, ResponsiveContainer, Legend, BarChart, Bar, Cell
 } from 'recharts';
 
-const API = 'https://malawi-sales-backend.onrender.com';
+const API = 'https://api.sabiasanalytics.com';
 
 export default function ViewerForecasting({ token, user }) {
   const [monthly, setMonthly] = useState([]);

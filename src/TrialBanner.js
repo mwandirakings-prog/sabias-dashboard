@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import SubscribePage from './SubscribePage';
 
-const API = 'https://malawi-sales-backend.onrender.com';
+const API = 'https://api.sabiasanalytics.com';
 
 export default function TrialBanner({ token, onLocked, user }) {
   const [status, setStatus] = useState(null);
