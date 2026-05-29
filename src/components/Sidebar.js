@@ -2,39 +2,57 @@ import React, { useState } from 'react';
 
 const menuItems = {
   admin: [
-    { label: 'Dashboard', key: 'dashboard' },
-    { label: 'Sales', key: 'sales' },
-    { label: 'Inventory', key: 'inventory' },
-    { label: 'Users', key: 'users' },
-    { label: 'Analytics', key: 'analytics' },
-    { label: 'Forecasting', key: 'forecasting' },
-    { label: 'Reports', key: 'reports' },
+    { label: 'Dashboard',     key: 'dashboard' },
+    { label: 'Sales',         key: 'sales' },
+    { label: 'Inventory',     key: 'inventory' },
+    { label: 'Users',         key: 'users' },
+    { label: 'Analytics',     key: 'analytics' },
+    { label: 'Forecasting',   key: 'forecasting' },
+    { label: 'Reports',       key: 'reports' },
     { label: 'Notifications', key: 'notifications' },
-    { label: 'Settings', key: 'settings' },
+    { label: 'Settings',      key: 'settings' },
   ],
   salesperson: [
-    { label: 'Dashboard', key: 'dashboard' },
-    { label: 'New Sale', key: 'newsale' },
-    { label: 'Products', key: 'products' },
-    { label: 'My Sales', key: 'mysales' },
+    { label: 'Dashboard',     key: 'dashboard' },
+    { label: 'Cart Sell',     key: 'cart' },
+    { label: 'New Sale',      key: 'newsale' },
+    { label: 'Products',      key: 'products' },
+    { label: 'My Sales',      key: 'mysales' },
     { label: 'Notifications', key: 'notifications' },
-    { label: 'Profile', key: 'profile' },
+    { label: 'Profile',       key: 'profile' },
   ],
   viewer: [
-    { label: 'Dashboard', key: 'dashboard' },
-    { label: 'Analytics', key: 'analytics' },
-    { label: 'Reports', key: 'reports' },
-    { label: 'Forecasting', key: 'forecasting' },
-    { label: 'Inventory View', key: 'inventory' },
+    { label: 'Dashboard',     key: 'dashboard' },
+    { label: 'Analytics',     key: 'analytics' },
+    { label: 'Reports',       key: 'reports' },
+    { label: 'Forecasting',   key: 'forecasting' },
+    { label: 'Inventory',     key: 'inventory' },
     { label: 'Notifications', key: 'notifications' },
-    { label: 'Profile', key: 'profile' },
+    { label: 'Profile',       key: 'profile' },
   ],
 };
 
-export default function Sidebar({ user, activePage, setActivePage, onLogout, onCollapse }) {
+export default function Sidebar({ user, activePage, setActivePage, onLogout, onCollapse, pressedTab }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [localPressed, setLocalPressed] = useState(null);
   const items = menuItems[user?.role] || menuItems.viewer;
   const width = collapsed ? 64 : 220;
+
+  const handleItemClick = (key) => {
+    setLocalPressed(key);
+    setTimeout(() => setLocalPressed(null), 200);
+    setActivePage(key);
+  };
+
+  const handleLogout = () => {
+    setLocalPressed('logout');
+    setTimeout(() => {
+      setLocalPressed(null);
+      onLogout();
+    }, 150);
+  };
+
+  const isPressed = (key) => localPressed === key || pressedTab === key;
 
   return (
     <div style={{
@@ -64,14 +82,15 @@ export default function Sidebar({ user, activePage, setActivePage, onLogout, onC
           </div>
         )}
         <button onClick={() => {
-  const newVal = !collapsed;
-  setCollapsed(newVal);
-  if (onCollapse) onCollapse(newVal);
-}} style={{
+          const newVal = !collapsed;
+          setCollapsed(newVal);
+          if (onCollapse) onCollapse(newVal);
+        }} style={{
           background: 'rgba(255,184,0,0.15)', border: '1px solid rgba(255,184,0,0.3)',
           color: '#FFB800', borderRadius: 6, width: 28, height: 28,
           cursor: 'pointer', fontSize: 14, display: 'flex',
           alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          transition: 'transform 0.15s',
         }}>
           {collapsed ? '>' : '<'}
         </button>
@@ -125,40 +144,72 @@ export default function Sidebar({ user, activePage, setActivePage, onLogout, onC
 
       {/* Menu Items */}
       <div style={{ flex: 1, padding: '10px 0', overflowY: 'auto' }}>
-        {items.map(item => (
-          <div key={item.key} onClick={() => setActivePage(item.key)}
-            title={collapsed ? item.label : ''}
-            style={{
-              display: 'flex', alignItems: 'center',
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              padding: collapsed ? '13px 0' : '12px 20px',
-              cursor: 'pointer',
-              background: activePage === item.key ? 'rgba(255,184,0,0.15)' : 'transparent',
-              borderLeft: activePage === item.key ? '3px solid #FFB800' : '3px solid transparent',
-              color: activePage === item.key ? '#FFB800' : 'rgba(255,255,255,0.75)',
-              fontSize: 13, fontFamily: 'Arial',
-              whiteSpace: 'nowrap', overflow: 'hidden',
-              transition: 'background 0.15s',
-            }}>
-            {collapsed ? (
-              <span style={{ fontSize: 11, fontWeight: 'bold', color: 'inherit', letterSpacing: 0.5 }}>
-                {item.label.slice(0, 2).toUpperCase()}
-              </span>
-            ) : (
-              <span>{item.label}</span>
-            )}
-          </div>
-        ))}
+        {items.map(item => {
+          const active = activePage === item.key;
+          const pressed = isPressed(item.key);
+          return (
+            <div key={item.key}
+              onClick={() => handleItemClick(item.key)}
+              title={collapsed ? item.label : ''}
+              style={{
+                display: 'flex', alignItems: 'center',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                padding: collapsed ? '13px 0' : '12px 20px',
+                cursor: 'pointer',
+                background: active
+                  ? 'rgba(255,184,0,0.15)'
+                  : pressed
+                  ? 'rgba(255,184,0,0.25)'
+                  : 'transparent',
+                borderLeft: active
+                  ? '3px solid #FFB800'
+                  : '3px solid transparent',
+                color: active ? '#FFB800' : 'rgba(255,255,255,0.75)',
+                fontSize: 13, fontFamily: 'Arial',
+                whiteSpace: 'nowrap', overflow: 'hidden',
+                transition: 'background 0.12s, transform 0.12s',
+                transform: pressed ? 'scale(0.96)' : 'scale(1)',
+                borderRadius: pressed ? 4 : 0,
+                userSelect: 'none',
+              }}>
+              {collapsed ? (
+                <span style={{
+                  fontSize: 11, fontWeight: 'bold',
+                  color: 'inherit', letterSpacing: 0.5,
+                  transition: 'transform 0.12s',
+                  transform: pressed ? 'scale(0.9)' : 'scale(1)',
+                  display: 'inline-block',
+                }}>
+                  {item.label.slice(0, 2).toUpperCase()}
+                </span>
+              ) : (
+                <span style={{
+                  transition: 'transform 0.12s',
+                  transform: pressed ? 'translateX(3px)' : 'translateX(0)',
+                  display: 'inline-block',
+                }}>
+                  {item.label}
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Logout */}
-      <div onClick={onLogout} style={{
+      <div onClick={handleLogout} style={{
         padding: collapsed ? '14px 0' : '14px 20px',
         borderTop: '1px solid rgba(255,184,0,0.15)',
         cursor: 'pointer', display: 'flex', alignItems: 'center',
         justifyContent: collapsed ? 'center' : 'flex-start',
         color: '#FF6B35', fontSize: 13, fontFamily: 'Arial',
-        whiteSpace: 'nowrap', background: 'rgba(206,17,38,0.08)',
+        whiteSpace: 'nowrap',
+        background: localPressed === 'logout'
+          ? 'rgba(206,17,38,0.2)'
+          : 'rgba(206,17,38,0.08)',
+        transition: 'background 0.12s, transform 0.12s',
+        transform: localPressed === 'logout' ? 'scale(0.97)' : 'scale(1)',
+        userSelect: 'none',
       }}>
         {collapsed ? (
           <span style={{ fontWeight: 'bold', fontSize: 11 }}>LO</span>
