@@ -98,19 +98,52 @@ export default function Settings({ user, token }) {
     });
   };
 
-  const handleProfileSave = (e) => {
+  const [profileError, setProfileError] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+
+  const handleProfileSave = async (e) => {
     e.preventDefault();
-    showSuccess('Profile updated successfully!');
+    setProfileError('');
+    setProfileSaving(true);
+    try {
+      await axios.put(`${API}/api/auth/profile`,
+        { name: profile.name, email: profile.email },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showSuccess('Profile updated successfully!');
+    } catch (err) {
+      setProfileError(err.response?.data?.error || 'Failed to update profile.');
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
-  const handlePasswordSave = (e) => {
+  const handlePasswordSave = async (e) => {
     e.preventDefault();
+    setPasswordError('');
     if (passwords.newPass !== passwords.confirm) {
-      alert('New passwords do not match!');
+      setPasswordError('New passwords do not match.');
       return;
     }
-    setPasswords({ current: '', newPass: '', confirm: '' });
-    showSuccess('Password changed successfully!');
+    if (passwords.newPass.length < 8) {
+      setPasswordError('New password must be at least 8 characters.');
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await axios.put(`${API}/api/auth/change-password`,
+        { current_password: passwords.current, new_password: passwords.newPass },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPasswords({ current: '', newPass: '', confirm: '' });
+      showSuccess('Password changed successfully!');
+    } catch (err) {
+      setPasswordError(err.response?.data?.error || 'Failed to change password.');
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   const handleDevUnlock = (e) => {
@@ -273,12 +306,19 @@ export default function Settings({ user, token }) {
                     </div>
                   ))}
                 </div>
-                <button type="submit"
-                  style={{ marginTop: 16, background: '#FF6B35', border: 'none',
-                    color: 'white', padding: '10px 24px', borderRadius: 8,
-                    cursor: 'pointer', fontWeight: 'bold', fontSize: 13 }}>
-                  Save Profile
+                <button type="submit" disabled={profileSaving}
+                  style={{ marginTop: 16, background: profileSaving ? '#AAA' : '#FF6B35',
+                    border: 'none', color: 'white', padding: '10px 24px', borderRadius: 8,
+                    cursor: profileSaving ? 'not-allowed' : 'pointer',
+                    fontWeight: 'bold', fontSize: 13, fontFamily: 'Arial' }}>
+                  {profileSaving ? 'Saving...' : 'Save Profile'}
                 </button>
+                {profileError && (
+                  <div style={{ marginTop: 10, color: '#C62828', fontSize: 12,
+                    background: '#FFEBEE', padding: '8px 12px', borderRadius: 6 }}>
+                    {profileError}
+                  </div>
+                )}
               </form>
             </div>
           )}
@@ -311,11 +351,18 @@ export default function Settings({ user, token }) {
                   padding: 12, marginBottom: 14, fontSize: 12, color: '#888' }}>
                   Password must be at least 8 characters
                 </div>
-                <button type="submit"
-                  style={{ background: '#FF6B35', border: 'none', color: 'white',
-                    padding: '10px 24px', borderRadius: 8, cursor: 'pointer',
-                    fontWeight: 'bold', fontSize: 13 }}>
-                  Change Password
+                {passwordError && (
+                  <div style={{ marginBottom: 14, color: '#C62828', fontSize: 12,
+                    background: '#FFEBEE', padding: '8px 12px', borderRadius: 6 }}>
+                    {passwordError}
+                  </div>
+                )}
+                <button type="submit" disabled={passwordSaving}
+                  style={{ background: passwordSaving ? '#AAA' : '#FF6B35',
+                    border: 'none', color: 'white', padding: '10px 24px',
+                    borderRadius: 8, cursor: passwordSaving ? 'not-allowed' : 'pointer',
+                    fontWeight: 'bold', fontSize: 13, fontFamily: 'Arial' }}>
+                  {passwordSaving ? 'Changing...' : 'Change Password'}
                 </button>
               </form>
             </div>

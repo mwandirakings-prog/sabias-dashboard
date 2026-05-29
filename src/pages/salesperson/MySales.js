@@ -3,665 +3,473 @@ import axios from 'axios';
 
 const API = 'https://api.sabiasanalytics.com';
 
-export default function MySales({ token, user }) {
-  const [sales, setSales] = useState([]);
-  const [inventory, setInventory] = useState([]);
+export default function SalespersonCart({ token, user }) {
+  const [products, setProducts] = useState([]);
+  const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('products');
   const [search, setSearch] = useState('');
-  const [filterPayment, setFilterPayment] = useState('All');
-  const [showQuickSell, setShowQuickSell] = useState(false);
-  const [saleMode, setSaleMode] = useState('quick');
-  const [productSearch, setProductSearch] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [saleDate, setSaleDate] = useState(
-    new Date().toISOString().split('T')[0]
-  );
-  const [quickForm, setQuickForm] = useState({
-    quantity: '1', customer: '', payment: 'Cash',
-    region: user?.region !== 'all' ? user?.region : '',
-  });
-  const [form, setForm] = useState({
-    sale_date: new Date().toISOString().split('T')[0],
-    product: '', category: '',
-    region: user?.region !== 'all' ? user?.region : '',
-    customer: '', quantity: '', unit_price: '', unit_cost: '',
-    salesperson: user?.name || '', payment: 'Cash'
-  });
+  const [mySales, setMySales] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [pressedProduct, setPressedProduct] = useState(null);
+  const [pressedTab, setPressedTab] = useState(null);
+  const [customer, setCustomer] = useState('');
+  const [payment, setPayment] = useState('Cash');
 
   const fmt = (n) => new Intl.NumberFormat('en-US').format(Math.round(n || 0));
 
-  const fetchAll = useCallback(async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const h = { headers: { Authorization: `Bearer ${token}` } };
-      const [s, inv] = await Promise.all([
-        axios.get(`${API}/api/sales`, h),
-        axios.get(`${API}/api/inventory`, h),
-      ]);
-      setSales(s.data.data);
-      setInventory(inv.data.data);
+      const res = await axios.get(`${API}/api/inventory`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProducts(res.data.data.filter(p => p.quantity_in_stock > 0));
     } catch (err) {
-      console.error(err);
+      setErrorMsg('Failed to load products.');
     } finally {
       setLoading(false);
     }
   }, [token]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
-
-  const getStockStatus = (qty, reorder) => {
-    if (qty === 0) return { label: 'Out of Stock', color: '#C62828', bg: '#FFEBEE' };
-    if (qty <= reorder) return { label: 'Low Stock', color: '#E65100', bg: '#FFF3E0' };
-    return { label: 'In Stock', color: '#2E7D32', bg: '#E8F5E9' };
-  };
-
-  const handleSelectProduct = (product) => {
-    if (product.quantity_in_stock === 0) {
-      setErrorMsg(`${product.product} is out of stock!`);
-      setTimeout(() => setErrorMsg(''), 3000);
-      return;
-    }
-    setSelectedProduct(product);
-    setQuickForm({
-      quantity: '1', customer: '', payment: 'Cash',
-      region: user?.region !== 'all' ? user?.region : '',
-    });
-    setErrorMsg('');
-  };
-
-  const handleQuickSell = async (e) => {
-    e.preventDefault();
-    if (parseInt(quickForm.quantity) > selectedProduct.quantity_in_stock) {
-      setErrorMsg(`Only ${selectedProduct.quantity_in_stock} units available!`);
-      return;
-    }
-    setSubmitting(true);
-    setErrorMsg('');
+  const fetchHistory = useCallback(async () => {
     try {
-      const rev = parseInt(quickForm.quantity) *
-        parseFloat(selectedProduct.unit_price);
-      const prof = parseInt(quickForm.quantity) *
-        (parseFloat(selectedProduct.unit_price) -
-         parseFloat(selectedProduct.unit_cost));
-      await axios.post(`${API}/api/sales`, {
-        sale_date: saleDate,
-        product: selectedProduct.product,
-        category: selectedProduct.category,
-        region: quickForm.region,
-        customer: quickForm.customer,
-        quantity: parseInt(quickForm.quantity),
-        unit_price: parseFloat(selectedProduct.unit_price),
-        unit_cost: parseFloat(selectedProduct.unit_cost),
-        salesperson: user?.name,
-        payment: quickForm.payment,
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      setSuccessMsg(
-        `Sale done! ${quickForm.quantity} x ${selectedProduct.product} — ` +
-        `MK ${fmt(rev)} revenue · MK ${fmt(prof)} profit · Date: ${saleDate}`
+      setHistoryLoading(true);
+      const res = await axios.get(`${API}/api/sales`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const mine = res.data.data.filter(
+        s => s.salesperson?.toLowerCase() === user?.name?.toLowerCase()
       );
-      setSelectedProduct(null);
-      setQuickForm({
-        quantity: '1', customer: '', payment: 'Cash',
-        region: user?.region !== 'all' ? user?.region : '',
-      });
-      setSaleDate(new Date().toISOString().split('T')[0]);
-      setShowQuickSell(false);
-      fetchAll();
-      setTimeout(() => setSuccessMsg(''), 5000);
-    } catch (err) {
-      setErrorMsg('Failed to record sale. Try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      setMySales(mine.slice(0, 30));
+    } catch (err) { console.error(err); }
+    finally { setHistoryLoading(false); }
+  }, [token, user]);
 
-  const handleManualSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await axios.post(`${API}/api/sales`, {
-        ...form,
-        quantity: parseInt(form.quantity),
-        unit_price: parseFloat(form.unit_price),
-        unit_cost: parseFloat(form.unit_cost),
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      setSuccessMsg('Sale submitted successfully!');
-      setForm({
-        sale_date: new Date().toISOString().split('T')[0],
-        product: '', category: '',
-        region: user?.region !== 'all' ? user?.region : '',
-        customer: '', quantity: '', unit_price: '', unit_cost: '',
-        salesperson: user?.name || '', payment: 'Cash'
-      });
-      setShowQuickSell(false);
-      fetchAll();
-      setTimeout(() => setSuccessMsg(''), 4000);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  useEffect(() => {
+    if (activeTab === 'history') fetchHistory();
+  }, [activeTab, fetchHistory]);
 
-  const filteredInventory = inventory.filter(p =>
-    productSearch === '' ||
-    p.product?.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.category?.toLowerCase().includes(productSearch.toLowerCase())
-  );
+  const categories = ['All', ...new Set(products.map(p => p.category).filter(Boolean))];
 
-  const mySales = user?.role === 'salesperson'
-    ? sales.filter(s =>
-        s.salesperson?.toLowerCase() === user?.name?.toLowerCase())
-    : sales;
-
-  const filtered = mySales.filter(s => {
-    const matchSearch = search === '' ||
-      s.product?.toLowerCase().includes(search.toLowerCase()) ||
-      s.customer?.toLowerCase().includes(search.toLowerCase()) ||
-      s.region?.toLowerCase().includes(search.toLowerCase()) ||
-      s.salesperson?.toLowerCase().includes(search.toLowerCase());
-    const matchPayment = filterPayment === 'All' || s.payment === filterPayment;
-    return matchSearch && matchPayment;
+  const filtered = products.filter(p => {
+    const ms = p.product?.toLowerCase().includes(search.toLowerCase());
+    const mc = categoryFilter === 'All' || p.category === categoryFilter;
+    return ms && mc;
   });
 
-  const totalRevenue = filtered.reduce((sum, s) =>
-    sum + parseFloat(s.revenue || 0), 0);
-  const totalProfit = filtered.reduce((sum, s) =>
-    sum + parseFloat(s.profit || 0), 0);
-  const margin = totalRevenue > 0
-    ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
+  const addToCart = (product) => {
+    setPressedProduct(product.id);
+    setTimeout(() => setPressedProduct(null), 200);
+    setCart(prev => {
+      const ex = prev.find(i => i.id === product.id);
+      if (ex) {
+        if (ex.qty >= product.quantity_in_stock) return prev;
+        return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i);
+      }
+      return [...prev, { ...product, qty: 1 }];
+    });
+  };
+
+  const updateQty = (id, delta) => {
+    setCart(prev => prev.map(i => {
+      if (i.id !== id) return i;
+      const nq = i.qty + delta;
+      if (nq <= 0) return null;
+      if (nq > i.quantity_in_stock) return i;
+      return { ...i, qty: nq };
+    }).filter(Boolean));
+  };
+
+  const removeFromCart = (id) => setCart(prev => prev.filter(i => i.id !== id));
+
+  const cartTotal = cart.reduce((s, i) => s + i.qty * i.unit_price, 0);
+  const cartProfit = cart.reduce((s, i) => s + i.qty * (i.unit_price - (i.unit_cost || 0)), 0);
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) { setErrorMsg('Cart is empty.'); return; }
+    setCheckoutLoading(true);
+    setErrorMsg('');
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      for (const item of cart) {
+        await axios.post(`${API}/api/sales`, {
+          sale_date: today,
+          product: item.product,
+          category: item.category,
+          region: user?.region || 'Main Branch',
+          customer: customer || 'Walk-in Customer',
+          quantity: item.qty,
+          unit_price: item.unit_price,
+          unit_cost: item.unit_cost || 0,
+          salesperson: user?.name,
+          payment,
+        }, { headers: { Authorization: `Bearer ${token}` } });
+      }
+      const count = cart.length;
+      const total = cartTotal;
+      setCart([]); setCustomer(''); setPayment('Cash');
+      setSuccessMsg(`Sale complete! ${count} product(s) · MK ${fmt(total)}`);
+      setTimeout(() => setSuccessMsg(''), 5000);
+      fetchProducts();
+      setActiveTab('history');
+      fetchHistory();
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || 'Checkout failed. Please try again.');
+    } finally { setCheckoutLoading(false); }
+  };
+
+  const handleTabPress = (tab) => {
+    setPressedTab(tab);
+    setTimeout(() => setPressedTab(null), 200);
+    setActiveTab(tab);
+  };
+
+  const tabStyle = (tab) => ({
+    flex: 1, padding: '11px 8px', border: 'none', cursor: 'pointer',
+    fontWeight: 'bold', fontSize: 13, borderRadius: 8,
+    transition: 'all 0.15s ease',
+    transform: pressedTab === tab ? 'scale(0.93)' : 'scale(1)',
+    background: activeTab === tab ? '#3E1F00' : '#FFF3E8',
+    color: activeTab === tab ? '#FFB800' : '#888',
+    boxShadow: activeTab === tab ? '0 2px 8px rgba(62,31,0,0.2)' : 'none',
+    fontFamily: 'Arial',
+  });
 
   return (
-    <div style={{ fontFamily: 'Arial' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'flex-start', marginBottom: 24 }}>
-        <div>
-          <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 22 }}>
-            My Sales History
-          </h2>
-          <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
-            {user?.role === 'salesperson'
-              ? 'Your personal sales records'
-              : `All sales for ${user?.company || 'Your Company'}`}
-          </p>
-        </div>
-        <button onClick={() => {
-          setShowQuickSell(!showQuickSell);
-          setSelectedProduct(null);
-          setErrorMsg('');
-        }}
-          style={{ background: '#FF6B35', border: 'none', color: 'white',
-                   padding: '10px 20px', borderRadius: 8, cursor: 'pointer',
-                   fontWeight: 'bold', fontSize: 14 }}>
-          {showQuickSell ? 'Close' : '+ New Sale'}
-        </button>
+    <div style={{ fontFamily: 'Arial', maxWidth: 900, margin: '0 auto' }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ color: '#3E1F00', margin: 0, fontSize: 20 }}>Cart Selling</h2>
+        <p style={{ color: '#888', margin: '4px 0 0', fontSize: 13 }}>
+          Tap products to add to cart · Checkout everything in one go
+        </p>
       </div>
 
       {successMsg && (
         <div style={{ background: '#E8F5E9', border: '1px solid #A5D6A7',
-                      borderRadius: 8, padding: '12px 16px', marginBottom: 20,
-                      color: '#2E7D32', fontWeight: 'bold', fontSize: 13 }}>
-          {successMsg}
-        </div>
+          borderRadius: 10, padding: '12px 16px', marginBottom: 16,
+          color: '#2E7D32', fontWeight: 'bold' }}>✓ {successMsg}</div>
       )}
       {errorMsg && (
         <div style={{ background: '#FFEBEE', border: '1px solid #FFCDD2',
-                      borderRadius: 8, padding: '12px 16px', marginBottom: 20,
-                      color: '#C62828', fontWeight: 'bold', fontSize: 13 }}>
+          borderRadius: 10, padding: '12px 16px', marginBottom: 16, color: '#C62828', fontSize: 13 }}>
           {errorMsg}
+          <button onClick={() => setErrorMsg('')}
+            style={{ marginLeft: 12, background: 'none', border: 'none',
+              cursor: 'pointer', color: '#C62828', fontWeight: 'bold' }}>✕</button>
         </div>
       )}
 
-      {showQuickSell && (
-        <div style={{ background: 'white', borderRadius: 12, padding: 24,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 24 }}>
-          <div style={{ display: 'flex', gap: 0, marginBottom: 24,
-                        border: '2px solid #FFB800', borderRadius: 10,
-                        overflow: 'hidden', width: 'fit-content' }}>
-            {[
-              { id: 'quick', label: 'Quick Sell', desc: 'Click product to sell' },
-              { id: 'manual', label: 'Manual Entry', desc: 'Fill form manually' },
-            ].map(tab => (
-              <button key={tab.id}
-                onClick={() => {
-                  setSaleMode(tab.id);
-                  setSelectedProduct(null);
-                  setErrorMsg('');
-                }}
-                style={{
-                  padding: '12px 28px', border: 'none', cursor: 'pointer',
-                  fontWeight: 'bold', fontSize: 13,
-                  background: saleMode === tab.id ? '#3E1F00' : 'white',
-                  color: saleMode === tab.id ? '#FFB800' : '#888',
-                }}>
-                {tab.label}
-                <div style={{ fontSize: 10, fontWeight: 'normal',
-                              color: saleMode === tab.id ? '#FFB800' : '#AAA',
-                              marginTop: 2 }}>
-                  {tab.desc}
-                </div>
-              </button>
-            ))}
+      {/* Cart summary bar */}
+      {cart.length > 0 && (
+        <div onClick={() => handleTabPress('cart')}
+          style={{ background: '#3E1F00', borderRadius: 12, padding: '12px 20px',
+            marginBottom: 16, display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', cursor: 'pointer', transition: 'transform 0.15s',
+            transform: pressedTab === 'cart' ? 'scale(0.98)' : 'scale(1)' }}>
+          <div style={{ color: '#FFB800', fontWeight: 'bold', fontSize: 14 }}>
+            {cart.length} item{cart.length !== 1 ? 's' : ''} in cart · {cart.reduce((s,i)=>s+i.qty,0)} units
           </div>
+          <div style={{ color: '#FF6B35', fontWeight: 'bold', fontSize: 16 }}>
+            MK {fmt(cartTotal)} →
+          </div>
+        </div>
+      )}
 
-          {saleMode === 'quick' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between',
-                            alignItems: 'center', marginBottom: 16 }}>
-                <div>
-                  <div style={{ color: '#3E1F00', fontWeight: 'bold',
-                                fontSize: 15 }}>
-                    Quick Sell — Click a Product
-                  </div>
-                  <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
-                    Click any product card to sell instantly
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: '#888' }}>Sale Date:</span>
-                  <input type="date" value={saleDate}
-                    onChange={(e) => setSaleDate(e.target.value)}
-                    style={{ padding: '6px 10px', borderRadius: 6,
-                             border: '1px solid #FFB800', fontSize: 12 }}/>
-                </div>
-              </div>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20,
+        background: '#FFF3E8', padding: 6, borderRadius: 12 }}>
+        <button style={tabStyle('products')} onClick={() => handleTabPress('products')}>
+          Products
+        </button>
+        <button style={tabStyle('cart')} onClick={() => handleTabPress('cart')}>
+          Cart{cart.length > 0 && (
+            <span style={{ background: '#FF6B35', color: 'white',
+              borderRadius: '50%', padding: '1px 6px', fontSize: 10,
+              marginLeft: 6 }}>{cart.length}</span>
+          )}
+        </button>
+        <button style={tabStyle('history')} onClick={() => handleTabPress('history')}>
+          My Sales
+        </button>
+      </div>
 
-              <input placeholder="Search product or category..."
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                style={{ padding: '8px 14px', borderRadius: 8,
-                         border: '1.5px solid #FFB800', fontSize: 13,
-                         width: 280, marginBottom: 16 }}/>
-
-              <div style={{ display: 'grid',
-                            gridTemplateColumns: 'repeat(4, 1fr)',
-                            gap: 10, marginBottom: 20,
-                            maxHeight: 280, overflowY: 'auto' }}>
-                {filteredInventory.length === 0 ? (
-                  <div style={{ gridColumn: '1/-1', textAlign: 'center',
-                                padding: 40, color: '#888' }}>
-                    No products found.
-                  </div>
-                ) : filteredInventory.map((p, i) => {
-                  const status = getStockStatus(
-                    p.quantity_in_stock, p.reorder_level);
-                  const isSelected = selectedProduct?.id === p.id;
-                  const canSell = p.quantity_in_stock > 0;
-                  return (
-                    <div key={i} onClick={() => handleSelectProduct(p)}
-                      style={{
-                        border: isSelected ? '2px solid #FF6B35'
-                          : `1px solid ${canSell ? '#FFE8D0' : '#FFCDD2'}`,
-                        borderRadius: 10, padding: 12,
-                        background: isSelected ? '#FFF3EE'
-                          : canSell ? '#FFFDF8' : '#FFF5F5',
-                        cursor: canSell ? 'pointer' : 'not-allowed',
-                        transition: 'all 0.2s',
-                      }}>
-                      <div style={{ fontWeight: 'bold', color: '#3E1F00',
-                                    fontSize: 13, marginBottom: 4 }}>
-                        {p.product}
-                      </div>
-                      <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>
-                        {p.category}
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 'bold',
-                                    color: '#2D6A4F' }}>
-                        MK {new Intl.NumberFormat('en-US').format(p.unit_price)}
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between',
-                                    alignItems: 'center', marginTop: 6 }}>
-                        <span style={{ background: status.bg, color: status.color,
-                                       padding: '1px 6px', borderRadius: 8,
-                                       fontSize: 10, fontWeight: 'bold' }}>
-                          {p.quantity_in_stock} left
-                        </span>
-                        {isSelected && (
-                          <span style={{ color: '#FF6B35', fontSize: 10,
-                                         fontWeight: 'bold' }}>✓</span>
-                        )}
-                      </div>
+      {/* PRODUCTS */}
+      {activeTab === 'products' && (
+        <div>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <input type="text" value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search products..."
+              style={{ flex: 1, minWidth: 160, padding: '10px 14px',
+                borderRadius: 8, border: '1.5px solid #FFB800', fontSize: 13, outline: 'none' }}/>
+            <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
+              style={{ padding: '10px 14px', borderRadius: 8,
+                border: '1.5px solid #FFB800', fontSize: 13, background: 'white', cursor: 'pointer' }}>
+              {categories.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 60, color: '#888' }}>Loading products...</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 60, background: '#FFF8F0',
+              borderRadius: 12, border: '1px dashed #FFB800', color: '#888' }}>
+              No products found
+            </div>
+          ) : (
+            <div style={{ display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 12 }}>
+              {filtered.map(product => {
+                const inCart = cart.find(i => i.id === product.id);
+                const isPressed = pressedProduct === product.id;
+                const isLow = product.quantity_in_stock <= product.reorder_level;
+                return (
+                  <div key={product.id}
+                    onClick={() => addToCart(product)}
+                    style={{ background: 'white', borderRadius: 12, padding: 16,
+                      border: inCart ? '2px solid #FF6B35' : '1px solid #FFE8D0',
+                      cursor: 'pointer', transition: 'all 0.15s ease',
+                      transform: isPressed ? 'scale(0.91)' : 'scale(1)',
+                      boxShadow: isPressed
+                        ? '0 1px 4px rgba(62,31,0,0.1)'
+                        : inCart ? '0 4px 16px rgba(255,107,53,0.2)'
+                        : '0 2px 8px rgba(62,31,0,0.06)',
+                      userSelect: 'none' }}>
+                    <div style={{ fontSize: 10, color: '#FF6B35',
+                      textTransform: 'uppercase', letterSpacing: 1,
+                      marginBottom: 6, fontWeight: 'bold' }}>
+                      {product.category}
                     </div>
-                  );
-                })}
-              </div>
-
-              {selectedProduct && (
-                <div style={{ background: '#FFF8F0', borderRadius: 10,
-                              padding: 20, border: '2px solid #FF6B35' }}>
-                  <div style={{ color: '#3E1F00', fontWeight: 'bold',
-                                fontSize: 15, marginBottom: 4 }}>
-                    Selling: {selectedProduct.product}
-                  </div>
-                  <div style={{ color: '#888', fontSize: 12, marginBottom: 16 }}>
-                    Price: MK {fmt(selectedProduct.unit_price)} ·
-                    Stock: {selectedProduct.quantity_in_stock} units
-                  </div>
-                  <form onSubmit={handleQuickSell}>
-                    <div style={{ display: 'grid',
-                                  gridTemplateColumns: 'repeat(4, 1fr)',
-                                  gap: 12, marginBottom: 16 }}>
-                      <div>
-                        <label style={{ fontSize: 11, color: '#555',
-                                        fontWeight: 'bold', display: 'block',
-                                        marginBottom: 6 }}>Quantity *</label>
-                        <input type="number" required min="1"
-                          max={selectedProduct.quantity_in_stock}
-                          value={quickForm.quantity}
-                          onChange={(e) => setQuickForm({
-                            ...quickForm, quantity: e.target.value })}
-                          style={{ width: '100%', padding: '9px 11px',
-                                   borderRadius: 7, border: '2px solid #FF6B35',
-                                   fontSize: 16, fontWeight: 'bold',
-                                   boxSizing: 'border-box' }}/>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, color: '#555',
-                                        fontWeight: 'bold', display: 'block',
-                                        marginBottom: 6 }}>Customer</label>
-                        <input type="text" value={quickForm.customer}
-                          placeholder="Walk-in"
-                          onChange={(e) => setQuickForm({
-                            ...quickForm, customer: e.target.value })}
-                          style={{ width: '100%', padding: '9px 11px',
-                                   borderRadius: 7, border: '1.5px solid #FFB800',
-                                   fontSize: 13, boxSizing: 'border-box' }}/>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, color: '#555',
-                                        fontWeight: 'bold', display: 'block',
-                                        marginBottom: 6 }}>Branch *</label>
-                        <input type="text" required value={quickForm.region}
-                          placeholder="e.g. Lilongwe"
-                          onChange={(e) => setQuickForm({
-                            ...quickForm, region: e.target.value })}
-                          style={{ width: '100%', padding: '9px 11px',
-                                   borderRadius: 7, border: '1.5px solid #FFB800',
-                                   fontSize: 13, boxSizing: 'border-box' }}/>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, color: '#555',
-                                        fontWeight: 'bold', display: 'block',
-                                        marginBottom: 6 }}>Payment *</label>
-                        <select value={quickForm.payment}
-                          onChange={(e) => setQuickForm({
-                            ...quickForm, payment: e.target.value })}
-                          style={{ width: '100%', padding: '9px 11px',
-                                   borderRadius: 7, border: '1.5px solid #FFB800',
-                                   fontSize: 13, boxSizing: 'border-box' }}>
-                          <option>Cash</option>
-                          <option>Mobile Money</option>
-                          <option>Credit</option>
-                          <option>Bank Transfer</option>
-                          <option>Voucher</option>
-                        </select>
-                      </div>
+                    <div style={{ fontWeight: 'bold', color: '#3E1F00',
+                      fontSize: 13, marginBottom: 8, lineHeight: 1.3 }}>
+                      {product.product}
                     </div>
-                    {quickForm.quantity > 0 && (
-                      <div style={{ display: 'flex', gap: 24, marginBottom: 16,
-                                    background: 'white', borderRadius: 8,
-                                    padding: '12px 16px',
-                                    border: '1px solid #FFE8D0' }}>
-                        <div>
-                          <div style={{ fontSize: 10, color: '#AAA' }}>Revenue</div>
-                          <div style={{ fontSize: 18, fontWeight: 'bold',
-                                        color: '#2D6A4F' }}>
-                            MK {fmt(quickForm.quantity * selectedProduct.unit_price)}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: '#AAA' }}>Profit</div>
-                          <div style={{ fontSize: 18, fontWeight: 'bold',
-                                        color: '#FF6B35' }}>
-                            MK {fmt(quickForm.quantity *
-                              (selectedProduct.unit_price -
-                               selectedProduct.unit_cost))}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: '#AAA' }}>Margin</div>
-                          <div style={{ fontSize: 18, fontWeight: 'bold',
-                                        color: '#FFB800' }}>
-                            {selectedProduct.unit_price > 0
-                              ? (((selectedProduct.unit_price -
-                                  selectedProduct.unit_cost) /
-                                  selectedProduct.unit_price) * 100).toFixed(1)
-                              : 0}%
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: '#AAA' }}>Date</div>
-                          <div style={{ fontSize: 14, fontWeight: 'bold',
-                                        color: '#3E1F00' }}>
-                            {saleDate}
-                          </div>
-                        </div>
+                    <div style={{ color: '#FF6B35', fontWeight: 'bold', fontSize: 15, marginBottom: 4 }}>
+                      MK {fmt(product.unit_price)}
+                    </div>
+                    <div style={{ fontSize: 11, color: isLow ? '#E65100' : '#2D6A4F' }}>
+                      {product.quantity_in_stock} in stock
+                      {isLow && ' ⚠'}
+                    </div>
+                    {inCart && (
+                      <div style={{ marginTop: 8, background: '#FF6B35', color: 'white',
+                        borderRadius: 6, padding: '3px 0', textAlign: 'center',
+                        fontSize: 11, fontWeight: 'bold' }}>
+                        {inCart.qty} added ✓
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      <button type="submit" disabled={submitting}
-                        style={{ background: submitting ? '#AAA' : '#FF6B35',
-                                 border: 'none', color: 'white',
-                                 padding: '12px 32px', borderRadius: 8,
-                                 cursor: submitting ? 'not-allowed' : 'pointer',
-                                 fontWeight: 'bold', fontSize: 15 }}>
-                        {submitting ? 'Recording...' : 'Record Sale Now'}
-                      </button>
-                      <button type="button"
-                        onClick={() => setSelectedProduct(null)}
-                        style={{ background: 'white',
-                                 border: '1.5px solid #FFB800',
-                                 color: '#3E1F00', padding: '12px 24px',
-                                 borderRadius: 8, cursor: 'pointer',
-                                 fontWeight: 'bold', fontSize: 14 }}>
-                        Change Product
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-            </div>
-          )}
-
-          {saleMode === 'manual' && (
-            <div>
-              <div style={{ color: '#3E1F00', fontWeight: 'bold',
-                            fontSize: 15, marginBottom: 16 }}>
-                Manual Sale Entry
-              </div>
-              <form onSubmit={handleManualSubmit}>
-                <div style={{ display: 'grid',
-                              gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-                  {[
-                    { label: 'Sale Date', key: 'sale_date', type: 'date' },
-                    { label: 'Product Name', key: 'product', type: 'text' },
-                    { label: 'Category', key: 'category', type: 'text' },
-                    { label: 'Branch/Region', key: 'region', type: 'text' },
-                    { label: 'Customer (optional)', key: 'customer',
-                      type: 'text', required: false },
-                    { label: 'Quantity', key: 'quantity', type: 'number' },
-                    { label: 'Unit Price (MWK)', key: 'unit_price', type: 'number' },
-                    { label: 'Unit Cost (MWK)', key: 'unit_cost', type: 'number' },
-                    { label: 'Salesperson', key: 'salesperson', type: 'text' },
-                  ].map(({ label, key, type, required = true }) => (
-                    <div key={key}>
-                      <label style={{ fontSize: 11, color: '#888',
-                                      display: 'block', marginBottom: 4 }}>
-                        {label}
-                      </label>
-                      <input type={type} required={required} value={form[key]}
-                        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                        style={{ width: '100%', padding: '8px 10px', borderRadius: 6,
-                                 border: '1px solid #FFB800', fontSize: 13,
-                                 boxSizing: 'border-box' }}/>
-                    </div>
-                  ))}
-                  <div>
-                    <label style={{ fontSize: 11, color: '#888',
-                                    display: 'block', marginBottom: 4 }}>
-                      Payment
-                    </label>
-                    <select value={form.payment}
-                      onChange={(e) => setForm({ ...form, payment: e.target.value })}
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6,
-                               border: '1px solid #FFB800', fontSize: 13,
-                               boxSizing: 'border-box' }}>
-                      <option>Cash</option>
-                      <option>Mobile Money</option>
-                      <option>Credit</option>
-                      <option>Bank Transfer</option>
-                      <option>Voucher</option>
-                    </select>
                   </div>
-                </div>
-                <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
-                  <button type="submit" disabled={submitting}
-                    style={{ background: '#FF6B35', border: 'none', color: 'white',
-                             padding: '10px 28px', borderRadius: 6,
-                             cursor: 'pointer', fontWeight: 'bold', fontSize: 14 }}>
-                    {submitting ? 'Submitting...' : 'Submit Sale'}
-                  </button>
-                  <button type="button" onClick={() => setShowQuickSell(false)}
-                    style={{ background: '#3E1F00', border: 'none', color: '#FFB800',
-                             padding: '10px 28px', borderRadius: 6,
-                             cursor: 'pointer', fontWeight: 'bold', fontSize: 14 }}>
-                    Cancel
-                  </button>
-                </div>
-              </form>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: 16, marginBottom: 24 }}>
-        {[
-          { label: 'Total Transactions', value: filtered.length, color: '#FF6B35' },
-          { label: 'Total Revenue', value: `MK ${fmt(totalRevenue)}`, color: '#2D6A4F' },
-          { label: 'Total Profit', value: `MK ${fmt(totalProfit)}`, color: '#FFB800' },
-          { label: 'Profit Margin', value: `${margin}%`, color: '#457B9D' },
-        ].map(({ label, value, color }) => (
-          <div key={label} style={{ background: 'white', borderRadius: 10,
-            padding: '16px 20px', borderLeft: `4px solid ${color}`,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <div style={{ color: '#888', fontSize: 12, marginBottom: 6 }}>{label}</div>
-            <div style={{ color: '#3E1F00', fontSize: 18,
-                          fontWeight: 'bold' }}>{value}</div>
-          </div>
-        ))}
-      </div>
+      {/* CART */}
+      {activeTab === 'cart' && (
+        <div>
+          {cart.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 60,
+              background: '#FFF8F0', borderRadius: 12, border: '1px dashed #FFB800' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🛒</div>
+              <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>
+                Cart is Empty
+              </div>
+              <div style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>
+                Go to Products and tap items to add them to your cart
+              </div>
+              <button onClick={() => handleTabPress('products')}
+                style={{ background: '#FF6B35', border: 'none', color: 'white',
+                  padding: '10px 24px', borderRadius: 8, cursor: 'pointer',
+                  fontWeight: 'bold', fontFamily: 'Arial' }}>
+                Browse Products
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 20, alignItems: 'start' }}>
 
-      <div style={{ background: 'white', borderRadius: 12, padding: 20,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between',
-                      alignItems: 'center', marginBottom: 16,
-                      flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 15 }}>
-            {user?.role === 'salesperson' ? 'My Records' : 'All Records'}
-            {' '}({filtered.length})
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <input placeholder="Search product, customer..."
-              value={search} onChange={(e) => setSearch(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: 8,
-                       border: '1px solid #FFB800', fontSize: 13, width: 240 }}/>
-            <select value={filterPayment}
-              onChange={(e) => setFilterPayment(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: 8,
-                       border: '1px solid #FFB800', fontSize: 13 }}>
-              <option>All</option>
-              <option>Cash</option>
-              <option>Mobile Money</option>
-              <option>Credit</option>
-              <option>Bank Transfer</option>
-              <option>Voucher</option>
-            </select>
-            <button onClick={fetchAll}
-              style={{ padding: '8px 16px', background: '#FF6B35',
-                       border: 'none', borderRadius: 8, color: 'white',
-                       cursor: 'pointer', fontSize: 13 }}>
-              Refresh
-            </button>
-          </div>
-        </div>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>
-            Loading sales...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60 }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-            <div style={{ color: '#888' }}>No sales records found.</div>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse',
-                            fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: '#3E1F00' }}>
-                  {['Date','Product','Category','Branch','Customer',
-                    'Qty','Unit Price','Revenue','Profit','Margin',
-                    'Salesperson','Payment'].map(h => (
-                    <th key={h} style={{ padding: '10px 12px', color: '#FFB800',
-                      textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+              {/* Items */}
+              <div>
+                <div style={{ fontWeight: 'bold', color: '#3E1F00',
+                  fontSize: 14, marginBottom: 12 }}>
+                  Items ({cart.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {cart.map(item => (
+                    <div key={item.id}
+                      style={{ background: 'white', borderRadius: 12, padding: 16,
+                        border: '1px solid #FFE8D0', display: 'flex',
+                        justifyContent: 'space-between', alignItems: 'center',
+                        gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 100 }}>
+                        <div style={{ fontWeight: 'bold', color: '#3E1F00', fontSize: 13 }}>
+                          {item.product}
+                        </div>
+                        <div style={{ color: '#888', fontSize: 11 }}>
+                          MK {fmt(item.unit_price)} each
+                        </div>
+                        <div style={{ color: '#FF6B35', fontWeight: 'bold', fontSize: 13 }}>
+                          MK {fmt(item.qty * item.unit_price)}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button onClick={() => updateQty(item.id, -1)}
+                          style={{ width: 32, height: 32, borderRadius: '50%',
+                            background: '#FFF3E8', border: '1px solid #FFE8D0',
+                            cursor: 'pointer', fontWeight: 'bold', fontSize: 16 }}>−</button>
+                        <span style={{ fontWeight: 'bold', color: '#3E1F00',
+                          fontSize: 16, minWidth: 24, textAlign: 'center' }}>
+                          {item.qty}
+                        </span>
+                        <button onClick={() => updateQty(item.id, 1)}
+                          style={{ width: 32, height: 32, borderRadius: '50%',
+                            background: '#FF6B35', border: 'none', cursor: 'pointer',
+                            fontWeight: 'bold', fontSize: 16, color: 'white' }}>+</button>
+                        <button onClick={() => removeFromCart(item.id)}
+                          style={{ width: 32, height: 32, borderRadius: '50%',
+                            background: '#FFEBEE', border: 'none', cursor: 'pointer',
+                            color: '#C62828', fontSize: 14 }}>✕</button>
+                      </div>
+                    </div>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((s, i) => (
-                  <tr key={s.id} style={{
-                    background: i % 2 === 0 ? '#FFF8F0' : 'white',
-                    borderBottom: '1px solid #FFE8D0' }}>
-                    <td style={{ padding: '8px 12px' }}>
-                      {s.sale_date?.split('T')[0]}
-                    </td>
-                    <td style={{ padding: '8px 12px', fontWeight: '500',
-                                 color: '#3E1F00' }}>{s.product}</td>
-                    <td style={{ padding: '8px 12px' }}>{s.category}</td>
-                    <td style={{ padding: '8px 12px' }}>{s.region}</td>
-                    <td style={{ padding: '8px 12px' }}>{s.customer || 'Walk-in'}</td>
-                    <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                      {fmt(s.quantity)}
-                    </td>
-                    <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                      MK {fmt(s.unit_price)}
-                    </td>
-                    <td style={{ padding: '8px 12px', textAlign: 'right',
-                                 color: '#2D6A4F', fontWeight: '500' }}>
-                      MK {fmt(s.revenue)}
-                    </td>
-                    <td style={{ padding: '8px 12px', textAlign: 'right',
-                                 color: '#FF6B35', fontWeight: '500' }}>
-                      MK {fmt(s.profit)}
-                    </td>
-                    <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                      {s.margin ? (parseFloat(s.margin) * 100).toFixed(1) : 0}%
-                    </td>
-                    <td style={{ padding: '8px 12px' }}>{s.salesperson}</td>
-                    <td style={{ padding: '8px 12px' }}>
-                      <span style={{
-                        background: s.payment === 'Cash' ? '#E8F5E9' :
-                                    s.payment === 'Mobile Money' ? '#E3F2FD' :
-                                    s.payment === 'Voucher' ? '#F3E5F5' : '#FFF3E0',
-                        color: s.payment === 'Cash' ? '#2E7D32' :
-                               s.payment === 'Mobile Money' ? '#1565C0' :
-                               s.payment === 'Voucher' ? '#6A1B9A' : '#E65100',
-                        padding: '2px 8px', borderRadius: 10, fontSize: 11
-                      }}>
-                        {s.payment}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </div>
+              </div>
+
+              {/* Checkout */}
+              <div style={{ background: 'white', borderRadius: 12, padding: 20,
+                border: '1px solid #FFE8D0' }}>
+                <div style={{ fontWeight: 'bold', color: '#3E1F00', fontSize: 16, marginBottom: 16 }}>
+                  Checkout
+                </div>
+
+                <div style={{ background: '#FFF8F0', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                  {cart.map(item => (
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between',
+                      padding: '4px 0', fontSize: 12, color: '#555',
+                      borderBottom: '1px solid #FFE8D0' }}>
+                      <span>{item.product} ×{item.qty}</span>
+                      <span>MK {fmt(item.qty * item.unit_price)}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between',
+                    marginTop: 10, fontWeight: 'bold', color: '#3E1F00', fontSize: 16 }}>
+                    <span>Total</span>
+                    <span style={{ color: '#FF6B35' }}>MK {fmt(cartTotal)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between',
+                    marginTop: 4, fontSize: 12, color: '#2D6A4F' }}>
+                    <span>Your Profit</span>
+                    <span>MK {fmt(cartProfit)}</span>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
+                    display: 'block', marginBottom: 5 }}>Customer (optional)</label>
+                  <input type="text" value={customer}
+                    onChange={e => setCustomer(e.target.value)}
+                    placeholder="e.g. John Banda"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8,
+                      border: '1.5px solid #FFB800', fontSize: 13,
+                      boxSizing: 'border-box' }}/>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ fontSize: 11, color: '#555', fontWeight: 'bold',
+                    display: 'block', marginBottom: 5 }}>Payment Method</label>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {['Cash', 'Airtel Money', 'TNM Mpamba', 'Bank Transfer'].map(m => (
+                      <button key={m} onClick={() => setPayment(m)}
+                        style={{ padding: '7px 12px', borderRadius: 8, border: 'none',
+                          cursor: 'pointer', fontWeight: 'bold', fontSize: 11,
+                          background: payment === m ? '#3E1F00' : '#FFF3E8',
+                          color: payment === m ? '#FFB800' : '#888',
+                          transition: 'all 0.15s', fontFamily: 'Arial' }}>
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button onClick={handleCheckout} disabled={checkoutLoading}
+                  style={{ width: '100%', padding: '14px',
+                    background: checkoutLoading ? '#AAA' : '#FF6B35',
+                    border: 'none', color: 'white', borderRadius: 10,
+                    cursor: checkoutLoading ? 'not-allowed' : 'pointer',
+                    fontWeight: 'bold', fontSize: 15, fontFamily: 'Arial',
+                    marginBottom: 10 }}>
+                  {checkoutLoading ? 'Processing...' : `Complete Sale — MK ${fmt(cartTotal)}`}
+                </button>
+                <button onClick={() => setCart([])}
+                  style={{ width: '100%', padding: '10px', background: 'transparent',
+                    border: '1px solid #FFCDD2', color: '#C62828', borderRadius: 10,
+                    cursor: 'pointer', fontSize: 13, fontFamily: 'Arial' }}>
+                  Clear Cart
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* HISTORY */}
+      {activeTab === 'history' && (
+        <div>
+          <div style={{ fontWeight: 'bold', color: '#3E1F00', fontSize: 14, marginBottom: 16 }}>
+            My Recent Sales
           </div>
-        )}
-      </div>
+          {historyLoading ? (
+            <div style={{ textAlign: 'center', padding: 60, color: '#888' }}>Loading...</div>
+          ) : mySales.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 60, background: '#FFF8F0',
+              borderRadius: 12, border: '1px dashed #FFB800', color: '#888' }}>
+              No sales yet. Start selling from the Cart tab!
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {mySales.map(sale => (
+                <div key={sale.id}
+                  style={{ background: 'white', borderRadius: 12, padding: 16,
+                    border: '1px solid #FFE8D0', display: 'flex',
+                    justifyContent: 'space-between', alignItems: 'center',
+                    flexWrap: 'wrap', gap: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 'bold', color: '#3E1F00', fontSize: 14 }}>
+                      {sale.product}
+                    </div>
+                    <div style={{ color: '#888', fontSize: 12 }}>
+                      {sale.sale_date?.split('T')[0]} · {sale.customer || 'Walk-in'} · {sale.payment}
+                    </div>
+                    <div style={{ color: '#555', fontSize: 12 }}>
+                      Qty: {sale.quantity} · MK {fmt(sale.unit_price)} each
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 'bold', color: '#FF6B35', fontSize: 16 }}>
+                      MK {fmt(sale.quantity * sale.unit_price)}
+                    </div>
+                    <div style={{ color: '#2D6A4F', fontSize: 12 }}>
+                      Profit: MK {fmt(sale.quantity * (sale.unit_price - (sale.unit_cost || 0)))}
+                    </div>
+                    <span style={{ background: '#E8F5E9', color: '#2E7D32',
+                      padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 'bold' }}>
+                      {sale.region}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
