@@ -14,6 +14,7 @@ export default function SuperAdmin({ token, user, onLogout }) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmRemovePlan, setConfirmRemovePlan] = useState(null);
   const [expandedApi, setExpandedApi] = useState(null);
 
   const fmt = (date) => date ? new Date(date).toLocaleDateString() : 'N/A';
@@ -37,10 +38,7 @@ export default function SuperAdmin({ token, user, onLogout }) {
         `${API}/api/superadmin/companies/${companyId}/apikeys`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setApiKeyStats(prev => ({
-        ...prev,
-        [companyId]: res.data.data
-      }));
+      setApiKeyStats(prev => ({ ...prev, [companyId]: res.data.data }));
     } catch (err) {
       console.error('Failed to load API keys for company', companyId);
     }
@@ -66,40 +64,24 @@ export default function SuperAdmin({ token, user, onLogout }) {
 
     if (company.subscription_status === 'active' && subEnd) {
       const days = Math.ceil((subEnd - now) / (1000 * 60 * 60 * 24));
-      if (days <= 0) return {
-        label: 'Subscription Expired', color: '#C62828',
-        bg: '#FFEBEE', days: 0 };
-      return {
-        label: `Active — ${days}d left`, color: '#2E7D32',
-        bg: '#E8F5E9', days };
+      if (days <= 0) return { label: 'Subscription Expired', color: '#C62828', bg: '#FFEBEE', days: 0 };
+      return { label: `Active — ${days}d left`, color: '#2E7D32', bg: '#E8F5E9', days };
     }
     const days = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
-    if (days <= 0) return {
-      label: 'Trial Expired', color: '#C62828',
-      bg: '#FFEBEE', days: 0 };
-    if (days <= 3) return {
-      label: `Trial — ${days}d left`, color: '#E65100',
-      bg: '#FFF3E0', days };
-    return {
-      label: `Trial — ${days}d left`, color: '#1565C0',
-      bg: '#E3F2FD', days };
+    if (days <= 0) return { label: 'Trial Expired', color: '#C62828', bg: '#FFEBEE', days: 0 };
+    if (days <= 3) return { label: `Trial — ${days}d left`, color: '#E65100', bg: '#FFF3E0', days };
+    return { label: `Trial — ${days}d left`, color: '#1565C0', bg: '#E3F2FD', days };
   };
 
   const handleToggle = async (company) => {
     try {
       await axios.put(
-        `${API}/api/superadmin/companies/${company.id}/toggle`,
-        {},
+        `${API}/api/superadmin/companies/${company.id}/toggle`, {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      showSuccess(
-        `${company.name} ${company.active
-          ? 'deactivated' : 'activated'} successfully!`
-      );
+      showSuccess(`${company.name} ${company.active ? 'deactivated' : 'activated'} successfully!`);
       fetchCompanies();
-    } catch (err) {
-      showError('Failed to toggle company status.');
-    }
+    } catch (err) { showError('Failed to toggle company status.'); }
   };
 
   const handleExtend = async (company) => {
@@ -112,9 +94,7 @@ export default function SuperAdmin({ token, user, onLogout }) {
       );
       showSuccess(`Trial extended by ${days} days for ${company.name}!`);
       fetchCompanies();
-    } catch (err) {
-      showError('Failed to extend trial.');
-    }
+    } catch (err) { showError('Failed to extend trial.'); }
   };
 
   const handleActivate = async (company) => {
@@ -127,9 +107,20 @@ export default function SuperAdmin({ token, user, onLogout }) {
       );
       showSuccess(`${company.name} activated for ${months} month(s)!`);
       fetchCompanies();
-    } catch (err) {
-      showError('Failed to activate subscription.');
-    }
+    } catch (err) { showError('Failed to activate subscription.'); }
+  };
+
+  // ── REMOVE PAID PLAN ──────────────────────────────────
+  const handleRemovePlan = async (company) => {
+    try {
+      await axios.put(
+        `${API}/api/superadmin/companies/${company.id}/remove-plan`, {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showSuccess(`Paid plan removed for ${company.name}. Account moved back to trial.`);
+      setConfirmRemovePlan(null);
+      fetchCompanies();
+    } catch (err) { showError('Failed to remove paid plan.'); }
   };
 
   const handleDelete = async (company) => {
@@ -141,9 +132,7 @@ export default function SuperAdmin({ token, user, onLogout }) {
       showSuccess(`${company.name} deleted successfully!`);
       setConfirmDelete(null);
       fetchCompanies();
-    } catch (err) {
-      showError('Failed to delete company.');
-    }
+    } catch (err) { showError('Failed to delete company.'); }
   };
 
   const handleToggleApi = (companyId) => {
@@ -151,9 +140,7 @@ export default function SuperAdmin({ token, user, onLogout }) {
       setExpandedApi(null);
     } else {
       setExpandedApi(companyId);
-      if (!apiKeyStats[companyId]) {
-        fetchApiKeyStats(companyId);
-      }
+      if (!apiKeyStats[companyId]) fetchApiKeyStats(companyId);
     }
   };
 
@@ -165,65 +152,51 @@ export default function SuperAdmin({ token, user, onLogout }) {
     const trialInfo = getTrialInfo(c);
     const matchStatus = filterStatus === 'All' ||
       (filterStatus === 'Active' && c.subscription_status === 'active') ||
-      (filterStatus === 'Trial' &&
-        c.subscription_status === 'trial' && trialInfo.days > 0) ||
+      (filterStatus === 'Trial' && c.subscription_status === 'trial' && trialInfo.days > 0) ||
       (filterStatus === 'Expired' && trialInfo.days <= 0) ||
       (filterStatus === 'Inactive' && !c.active) ||
-      (filterStatus === 'API Users' &&
-        (c.api_key_count > 0 || apiKeyStats[c.id]?.length > 0));
+      (filterStatus === 'API Users' && (c.api_key_count > 0 || apiKeyStats[c.id]?.length > 0));
     return matchSearch && matchStatus;
   });
 
   const totalCompanies = companies.length;
-  const activeCompanies = companies.filter(c =>
-    c.subscription_status === 'active').length;
-  const trialCompanies = companies.filter(c =>
-    c.subscription_status === 'trial' &&
-    getTrialInfo(c).days > 0).length;
-  const expiredCompanies = companies.filter(c =>
-    getTrialInfo(c).days <= 0).length;
+  const activeCompanies = companies.filter(c => c.subscription_status === 'active').length;
+  const trialCompanies = companies.filter(c => c.subscription_status === 'trial' && getTrialInfo(c).days > 0).length;
+  const expiredCompanies = companies.filter(c => getTrialInfo(c).days <= 0).length;
 
   return (
-    <div style={{ fontFamily: 'Arial', minHeight: '100vh',
-                  background: '#0D1117' }}>
+    <div style={{ fontFamily: 'Arial', minHeight: '100vh', background: '#0D1117' }}>
 
       {/* Top Bar */}
-      <div style={{ background: '#161B22',
-                    borderBottom: '1px solid #30363D',
-                    padding: '12px 32px', display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center' }}>
+      <div style={{ background: '#161B22', borderBottom: '1px solid #30363D',
+        padding: '12px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ background: '#FFB800', color: '#0D1117',
-                        fontWeight: 'bold', fontSize: 18,
-                        padding: '6px 16px', borderRadius: 8,
-                        letterSpacing: 2 }}>
+          <div style={{ background: '#FFB800', color: '#0D1117', fontWeight: 'bold',
+            fontSize: 18, padding: '6px 16px', borderRadius: 8, letterSpacing: 2 }}>
             SABIAS
           </div>
-          <div style={{ color: '#F0F6FC', fontWeight: 'bold',
-                        fontSize: 16 }}>
+          <div style={{ color: '#F0F6FC', fontWeight: 'bold', fontSize: 16 }}>
             Super Admin Portal
           </div>
-          <span style={{ background: '#E63946', color: 'white',
-                         fontSize: 10, padding: '2px 8px', borderRadius: 4,
-                         fontWeight: 'bold' }}>
+          <span style={{ background: '#E63946', color: 'white', fontSize: 10,
+            padding: '2px 8px', borderRadius: 4, fontWeight: 'bold' }}>
             MASTER ACCESS
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ color: '#8B949E', fontSize: 13 }}>
-            {user?.name} — Kings Mwandira
+            Kings Mwandira — Super Admin
           </div>
           <button onClick={fetchCompanies}
             style={{ background: '#21262D', border: '1px solid #30363D',
-                     color: '#F0F6FC', padding: '6px 16px', borderRadius: 6,
-                     cursor: 'pointer', fontSize: 13 }}>
+              color: '#F0F6FC', padding: '6px 16px', borderRadius: 6,
+              cursor: 'pointer', fontSize: 13, fontFamily: 'Arial' }}>
             Refresh
           </button>
           <button onClick={onLogout}
             style={{ background: '#E63946', border: 'none', color: 'white',
-                     padding: '6px 16px', borderRadius: 6, cursor: 'pointer',
-                     fontSize: 13, fontWeight: 'bold' }}>
+              padding: '6px 16px', borderRadius: 6, cursor: 'pointer',
+              fontSize: 13, fontWeight: 'bold', fontFamily: 'Arial' }}>
             Logout
           </button>
         </div>
@@ -234,17 +207,15 @@ export default function SuperAdmin({ token, user, onLogout }) {
         {/* Messages */}
         {actionMsg && (
           <div style={{ background: '#1B4332', border: '1px solid #2D6A4F',
-                        borderRadius: 8, padding: '12px 16px',
-                        marginBottom: 20, color: '#52B788',
-                        fontWeight: 'bold' }}>
-            {actionMsg}
+            borderRadius: 8, padding: '12px 16px', marginBottom: 20,
+            color: '#52B788', fontWeight: 'bold' }}>
+            ✓ {actionMsg}
           </div>
         )}
         {errorMsg && (
           <div style={{ background: '#4A0404', border: '1px solid #E63946',
-                        borderRadius: 8, padding: '12px 16px',
-                        marginBottom: 20, color: '#FF6B6B',
-                        fontWeight: 'bold' }}>
+            borderRadius: 8, padding: '12px 16px', marginBottom: 20,
+            color: '#FF6B6B', fontWeight: 'bold' }}>
             {errorMsg}
           </div>
         )}
@@ -255,150 +226,121 @@ export default function SuperAdmin({ token, user, onLogout }) {
             Company Management
           </h2>
           <p style={{ color: '#8B949E', margin: '4px 0 0', fontSize: 13 }}>
-            Manage all SABIAS registered companies — trials,
-            subscriptions, API access and control
+            Manage all SABIAS registered companies — trials, subscriptions, API access and control
           </p>
         </div>
 
         {/* KPI Cards */}
         <div style={{ display: 'grid',
-                      gridTemplateColumns: 'repeat(4, 1fr)',
-                      gap: 16, marginBottom: 28 }}>
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 16, marginBottom: 28 }}>
           {[
-            { label: 'Total Companies', value: totalCompanies,
-              color: '#FFB800' },
-            { label: 'Paid Active', value: activeCompanies,
-              color: '#52B788' },
-            { label: 'On Trial', value: trialCompanies,
-              color: '#4CC9F0' },
-            { label: 'Expired', value: expiredCompanies,
-              color: '#E63946' },
+            { label: 'Total Companies', value: totalCompanies, color: '#FFB800' },
+            { label: 'Paid Active', value: activeCompanies, color: '#52B788' },
+            { label: 'On Trial', value: trialCompanies, color: '#4CC9F0' },
+            { label: 'Expired', value: expiredCompanies, color: '#E63946' },
           ].map(({ label, value, color }) => (
-            <div key={label} style={{ background: '#161B22',
-              borderRadius: 12, padding: 20,
-              border: `1px solid ${color}33`,
+            <div key={label} style={{ background: '#161B22', borderRadius: 12,
+              padding: 20, border: `1px solid ${color}33`,
               borderLeft: `4px solid ${color}` }}>
-              <div style={{ color: '#8B949E', fontSize: 12,
-                            marginBottom: 4 }}>{label}</div>
-              <div style={{ color: '#F0F6FC', fontSize: 28,
-                            fontWeight: 'bold' }}>{value}</div>
+              <div style={{ color: '#8B949E', fontSize: 12, marginBottom: 4 }}>{label}</div>
+              <div style={{ color: '#F0F6FC', fontSize: 28, fontWeight: 'bold' }}>{value}</div>
             </div>
           ))}
         </div>
 
         {/* Filters */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 20,
-                      flexWrap: 'wrap', alignItems: 'center' }}>
+          flexWrap: 'wrap', alignItems: 'center' }}>
           <input placeholder="Search company, email or city..."
             value={search} onChange={(e) => setSearch(e.target.value)}
             style={{ padding: '10px 16px', borderRadius: 8,
-                     border: '1px solid #30363D', fontSize: 13,
-                     width: 280, background: '#161B22',
-                     color: '#F0F6FC' }}/>
-          {['All', 'Active', 'Trial', 'Expired',
-            'Inactive', 'API Users'].map(f => (
+              border: '1px solid #30363D', fontSize: 13, width: 280,
+              background: '#161B22', color: '#F0F6FC' }}/>
+          {['All', 'Active', 'Trial', 'Expired', 'Inactive', 'API Users'].map(f => (
             <button key={f} onClick={() => setFilterStatus(f)}
-              style={{
-                padding: '8px 18px', borderRadius: 20,
-                cursor: 'pointer', fontWeight: 'bold',
-                fontSize: 12, border: 'none',
+              style={{ padding: '8px 18px', borderRadius: 20, cursor: 'pointer',
+                fontWeight: 'bold', fontSize: 12, border: 'none',
                 background: filterStatus === f ? '#FFB800' : '#21262D',
                 color: filterStatus === f ? '#0D1117' : '#8B949E',
-              }}>
+                fontFamily: 'Arial' }}>
               {f}
             </button>
           ))}
-          <div style={{ color: '#8B949E', fontSize: 13,
-                        marginLeft: 'auto' }}>
+          <div style={{ color: '#8B949E', fontSize: 13, marginLeft: 'auto' }}>
             {filtered.length} of {totalCompanies} companies
           </div>
         </div>
 
         {/* Companies List */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 80,
-                        color: '#8B949E', fontSize: 18 }}>
+          <div style={{ textAlign: 'center', padding: 80, color: '#8B949E', fontSize: 18 }}>
             Loading companies...
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 80,
-                        color: '#8B949E' }}>
-            <div style={{ fontSize: 32, marginBottom: 16 }}>
-              No companies found
-            </div>
+          <div style={{ textAlign: 'center', padding: 80, color: '#8B949E' }}>
+            <div style={{ fontSize: 32, marginBottom: 16 }}>No companies found</div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column',
-                        gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {filtered.map(company => {
               const trialInfo = getTrialInfo(company);
               const companyApiKeys = apiKeyStats[company.id] || [];
-              const hasApiKeys = companyApiKeys.length > 0;
-              const totalApiRequests = companyApiKeys.reduce(
-                (sum, k) => sum + (k.requests_total || 0), 0);
-              const todayApiRequests = companyApiKeys.reduce(
-                (sum, k) => sum + (k.requests_today || 0), 0);
+              const totalApiRequests = companyApiKeys.reduce((sum, k) => sum + (k.requests_total || 0), 0);
+              const todayApiRequests = companyApiKeys.reduce((sum, k) => sum + (k.requests_today || 0), 0);
+              const isPaid = company.subscription_status === 'active';
 
               return (
                 <div key={company.id}
                   style={{ background: '#161B22', borderRadius: 12,
-                           border: `1px solid ${company.active
-                             ? '#30363D' : '#4A0404'}`,
-                           padding: 20 }}>
+                    border: `1px solid ${company.active ? '#30363D' : '#4A0404'}`,
+                    padding: 20 }}>
 
                   {/* Company Header */}
-                  <div style={{ display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'flex-start',
-                                marginBottom: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center',
-                                  gap: 14 }}>
-                      <div style={{ width: 48, height: 48,
-                                    borderRadius: '50%',
-                                    background: '#FFB800', color: '#0D1117',
-                                    display: 'flex', alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontWeight: 'bold', fontSize: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'flex-start', marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: '50%',
+                        background: '#FFB800', color: '#0D1117', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 'bold', fontSize: 20 }}>
                         {company.name?.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div style={{ color: '#F0F6FC', fontWeight: 'bold',
-                                      fontSize: 16 }}>
+                        <div style={{ color: '#F0F6FC', fontWeight: 'bold', fontSize: 16 }}>
                           {company.name}
                           {!company.active && (
-                            <span style={{ background: '#4A0404',
-                                           color: '#FF6B6B', fontSize: 10,
-                                           padding: '2px 8px', borderRadius: 4,
-                                           marginLeft: 8,
-                                           fontWeight: 'bold' }}>
+                            <span style={{ background: '#4A0404', color: '#FF6B6B',
+                              fontSize: 10, padding: '2px 8px', borderRadius: 4,
+                              marginLeft: 8, fontWeight: 'bold' }}>
                               INACTIVE
                             </span>
                           )}
+                          {isPaid && (
+                            <span style={{ background: '#1B4332', color: '#52B788',
+                              fontSize: 10, padding: '2px 8px', borderRadius: 4,
+                              marginLeft: 8, fontWeight: 'bold' }}>
+                              PAID
+                            </span>
+                          )}
                         </div>
-                        <div style={{ color: '#8B949E', fontSize: 13,
-                                      marginTop: 2 }}>
+                        <div style={{ color: '#8B949E', fontSize: 13, marginTop: 2 }}>
                           {company.email}
                         </div>
-                        <div style={{ color: '#8B949E', fontSize: 12,
-                                      marginTop: 2 }}>
-                          {company.city} · {company.phone} ·
-                          {' '}{company.user_count} user(s) ·
+                        <div style={{ color: '#8B949E', fontSize: 12, marginTop: 2 }}>
+                          {company.city} · {company.phone} · {company.user_count} user(s) ·
                           Joined {fmt(company.created_at)}
                         </div>
                       </div>
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center',
-                                  gap: 10 }}>
-                      <span style={{ background: trialInfo.bg,
-                                     color: trialInfo.color,
-                                     padding: '4px 12px', borderRadius: 10,
-                                     fontSize: 12, fontWeight: 'bold' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ background: trialInfo.bg, color: trialInfo.color,
+                        padding: '4px 12px', borderRadius: 10, fontSize: 12,
+                        fontWeight: 'bold' }}>
                         {trialInfo.label}
                       </span>
-                      <span style={{ background: '#21262D',
-                                     color: '#8B949E', padding: '4px 12px',
-                                     borderRadius: 10, fontSize: 11 }}>
+                      <span style={{ background: '#21262D', color: '#8B949E',
+                        padding: '4px 12px', borderRadius: 10, fontSize: 11 }}>
                         ID: {company.id}
                       </span>
                     </div>
@@ -406,46 +348,39 @@ export default function SuperAdmin({ token, user, onLogout }) {
 
                   {/* API Key Summary Strip */}
                   <div style={{ background: '#0D1117', borderRadius: 8,
-                                padding: '10px 16px', marginBottom: 14,
-                                display: 'flex', alignItems: 'center',
-                                justifyContent: 'space-between',
-                                border: '1px solid #21262D' }}>
+                    padding: '10px 16px', marginBottom: 14, display: 'flex',
+                    alignItems: 'center', justifyContent: 'space-between',
+                    border: '1px solid #21262D' }}>
                     <div style={{ display: 'flex', gap: 24 }}>
                       <div>
                         <div style={{ fontSize: 10, color: '#8B949E',
-                                      textTransform: 'uppercase',
-                                      letterSpacing: 1 }}>
+                          textTransform: 'uppercase', letterSpacing: 1 }}>
                           API Keys
                         </div>
                         <div style={{ fontSize: 16, fontWeight: 'bold',
-                                      color: expandedApi === company.id
-                                        ? '#FFB800' : '#F0F6FC' }}>
+                          color: expandedApi === company.id ? '#FFB800' : '#F0F6FC' }}>
                           {expandedApi === company.id
                             ? companyApiKeys.filter(k => k.active).length
                             : 'Click to view'}
                         </div>
                       </div>
-                      {expandedApi === company.id && hasApiKeys && (
+                      {expandedApi === company.id && companyApiKeys.length > 0 && (
                         <>
                           <div>
                             <div style={{ fontSize: 10, color: '#8B949E',
-                                          textTransform: 'uppercase',
-                                          letterSpacing: 1 }}>
+                              textTransform: 'uppercase', letterSpacing: 1 }}>
                               Requests Today
                             </div>
-                            <div style={{ fontSize: 16, fontWeight: 'bold',
-                                          color: '#4CC9F0' }}>
+                            <div style={{ fontSize: 16, fontWeight: 'bold', color: '#4CC9F0' }}>
                               {todayApiRequests}
                             </div>
                           </div>
                           <div>
                             <div style={{ fontSize: 10, color: '#8B949E',
-                                          textTransform: 'uppercase',
-                                          letterSpacing: 1 }}>
+                              textTransform: 'uppercase', letterSpacing: 1 }}>
                               Total Requests
                             </div>
-                            <div style={{ fontSize: 16, fontWeight: 'bold',
-                                          color: '#52B788' }}>
+                            <div style={{ fontSize: 16, fontWeight: 'bold', color: '#52B788' }}>
                               {totalApiRequests}
                             </div>
                           </div>
@@ -453,124 +388,86 @@ export default function SuperAdmin({ token, user, onLogout }) {
                       )}
                     </div>
                     <button onClick={() => handleToggleApi(company.id)}
-                      style={{ background: '#21262D',
-                               border: '1px solid #30363D',
-                               color: '#8B949E', padding: '6px 14px',
-                               borderRadius: 6, cursor: 'pointer',
-                               fontSize: 12 }}>
-                      {expandedApi === company.id
-                        ? 'Hide API Info' : 'View API Info'}
+                      style={{ background: '#21262D', border: '1px solid #30363D',
+                        color: '#8B949E', padding: '6px 14px', borderRadius: 6,
+                        cursor: 'pointer', fontSize: 12, fontFamily: 'Arial' }}>
+                      {expandedApi === company.id ? 'Hide API Info' : 'View API Info'}
                     </button>
                   </div>
 
                   {/* API Keys Detail — Expanded */}
                   {expandedApi === company.id && (
                     <div style={{ background: '#0D1117', borderRadius: 10,
-                                  padding: 16, marginBottom: 14,
-                                  border: '1px solid #21262D' }}>
+                      padding: 16, marginBottom: 14, border: '1px solid #21262D' }}>
                       <div style={{ color: '#FFB800', fontWeight: 'bold',
-                                    fontSize: 13, marginBottom: 12 }}>
+                        fontSize: 13, marginBottom: 12 }}>
                         API Keys for {company.name}
                       </div>
 
                       {companyApiKeys.length === 0 ? (
-                        <div style={{ color: '#8B949E', fontSize: 13,
-                                      padding: '12px 0' }}>
+                        <div style={{ color: '#8B949E', fontSize: 13, padding: '12px 0' }}>
                           No API keys generated yet for this company.
                         </div>
                       ) : (
-                        <div style={{ display: 'flex',
-                                      flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           {companyApiKeys.map(key => (
                             <div key={key.id}
-                              style={{ background: '#161B22',
-                                       borderRadius: 8,
-                                       padding: '12px 16px',
-                                       border: `1px solid ${key.active
-                                         ? '#30363D' : '#4A0404'}`,
-                                       opacity: key.active ? 1 : 0.6 }}>
-                              <div style={{ display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'flex-start',
-                                            marginBottom: 8 }}>
+                              style={{ background: '#161B22', borderRadius: 8,
+                                padding: '12px 16px',
+                                border: `1px solid ${key.active ? '#30363D' : '#4A0404'}`,
+                                opacity: key.active ? 1 : 0.6 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between',
+                                alignItems: 'flex-start', marginBottom: 8 }}>
                                 <div>
-                                  <div style={{ color: '#F0F6FC',
-                                                fontWeight: 'bold',
-                                                fontSize: 14 }}>
+                                  <div style={{ color: '#F0F6FC', fontWeight: 'bold', fontSize: 14 }}>
                                     {key.name}
                                   </div>
-                                  <div style={{ color: '#8B949E',
-                                                fontSize: 11, marginTop: 2 }}>
-                                    Created {fmt(key.created_at)} ·
-                                    Last used {fmt(key.last_used_at)}
+                                  <div style={{ color: '#8B949E', fontSize: 11, marginTop: 2 }}>
+                                    Created {fmt(key.created_at)} · Last used {fmt(key.last_used_at)}
                                   </div>
                                 </div>
-                                <span style={{
-                                  background: key.active
-                                    ? '#1B4332' : '#4A0404',
+                                <span style={{ background: key.active ? '#1B4332' : '#4A0404',
                                   color: key.active ? '#52B788' : '#FF6B6B',
                                   padding: '2px 10px', borderRadius: 8,
-                                  fontSize: 11, fontWeight: 'bold'
-                                }}>
+                                  fontSize: 11, fontWeight: 'bold' }}>
                                   {key.active ? 'Active' : 'Revoked'}
                                 </span>
                               </div>
-
-                              {/* Key value */}
-                              <div style={{ background: '#0D1117',
-                                            borderRadius: 6, padding: '8px 12px',
-                                            marginBottom: 10 }}>
+                              <div style={{ background: '#0D1117', borderRadius: 6,
+                                padding: '8px 12px', marginBottom: 10 }}>
                                 <code style={{ color: '#4CC9F0', fontSize: 11,
-                                               fontFamily: 'monospace',
-                                               wordBreak: 'break-all' }}>
+                                  fontFamily: 'monospace', wordBreak: 'break-all' }}>
                                   {key.key_value}
                                 </code>
                               </div>
-
-                              {/* Usage stats */}
                               <div style={{ display: 'flex', gap: 20 }}>
                                 <div>
-                                  <div style={{ fontSize: 10,
-                                                color: '#8B949E',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: 1 }}>
+                                  <div style={{ fontSize: 10, color: '#8B949E',
+                                    textTransform: 'uppercase', letterSpacing: 1 }}>
                                     Today
                                   </div>
-                                  <div style={{ fontSize: 15,
-                                                fontWeight: 'bold',
-                                                color: '#FF6B35' }}>
+                                  <div style={{ fontSize: 15, fontWeight: 'bold', color: '#FF6B35' }}>
                                     {key.requests_today}
-                                    <span style={{ fontSize: 10,
-                                                   color: '#8B949E',
-                                                   fontWeight: 'normal' }}>
+                                    <span style={{ fontSize: 10, color: '#8B949E', fontWeight: 'normal' }}>
                                       {' '}/1000
                                     </span>
                                   </div>
                                 </div>
                                 <div>
-                                  <div style={{ fontSize: 10,
-                                                color: '#8B949E',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: 1 }}>
+                                  <div style={{ fontSize: 10, color: '#8B949E',
+                                    textTransform: 'uppercase', letterSpacing: 1 }}>
                                     All Time
                                   </div>
-                                  <div style={{ fontSize: 15,
-                                                fontWeight: 'bold',
-                                                color: '#52B788' }}>
+                                  <div style={{ fontSize: 15, fontWeight: 'bold', color: '#52B788' }}>
                                     {key.requests_total}
                                   </div>
                                 </div>
                               </div>
-
-                              {/* Usage bar */}
-                              <div style={{ background: '#21262D',
-                                            borderRadius: 4, height: 4,
-                                            marginTop: 8 }}>
+                              <div style={{ background: '#21262D', borderRadius: 4,
+                                height: 4, marginTop: 8 }}>
                                 <div style={{
-                                  width: `${Math.min(
-                                    (key.requests_today / 1000) * 100, 100)}%`,
-                                  background: key.requests_today > 800
-                                    ? '#E63946' : '#4CC9F0',
+                                  width: `${Math.min((key.requests_today / 1000) * 100, 100)}%`,
+                                  background: key.requests_today > 800 ? '#E63946' : '#4CC9F0',
                                   height: '100%', borderRadius: 4
                                 }}/>
                               </div>
@@ -578,78 +475,47 @@ export default function SuperAdmin({ token, user, onLogout }) {
                           ))}
                         </div>
                       )}
-
-                      {/* API not connected notice */}
-                      {companyApiKeys.filter(k => k.active).length === 0 && (
-                        <div style={{ marginTop: 12, padding: '10px 14px',
-                                      background: '#1C2B4A', borderRadius: 8,
-                                      border: '1px solid #4CC9F0' }}>
-                          <div style={{ color: '#4CC9F0', fontSize: 12 }}>
-                            This company has not connected any external
-                            systems via API yet. Contact them on
-                            <strong style={{ color: '#FFB800' }}>
-                              {' '}0996 175 162
-                            </strong>
-                            {' '}to upsell API access.
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
 
                   {/* Actions Row */}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap',
-                                paddingTop: 14,
-                                borderTop: '1px solid #21262D' }}>
+                    paddingTop: 14, borderTop: '1px solid #21262D',
+                    alignItems: 'center' }}>
 
-                    {/* Toggle Active */}
+                    {/* Toggle Active / Deactivate */}
                     <button onClick={() => handleToggle(company)}
-                      style={{ background: company.active
-                                 ? '#4A0404' : '#1B4332',
-                               border: 'none',
-                               color: company.active
-                                 ? '#FF6B6B' : '#52B788',
-                               padding: '8px 16px', borderRadius: 6,
-                               cursor: 'pointer', fontWeight: 'bold',
-                               fontSize: 12 }}>
+                      style={{ background: company.active ? '#4A0404' : '#1B4332',
+                        border: 'none', color: company.active ? '#FF6B6B' : '#52B788',
+                        padding: '8px 16px', borderRadius: 6, cursor: 'pointer',
+                        fontWeight: 'bold', fontSize: 12, fontFamily: 'Arial' }}>
                       {company.active ? 'Deactivate' : 'Activate'}
                     </button>
 
                     {/* Extend Trial */}
-                    <div style={{ display: 'flex', gap: 4,
-                                  alignItems: 'center' }}>
-                      <input type="number" min="1" max="90"
-                        placeholder="Days"
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <input type="number" min="1" max="90" placeholder="Days"
                         value={extendDays[company.id] || ''}
-                        onChange={(e) => setExtendDays({
-                          ...extendDays,
-                          [company.id]: e.target.value })}
-                        style={{ width: 64, padding: '7px 8px',
-                                 borderRadius: 6,
-                                 border: '1px solid #30363D',
-                                 background: '#21262D', color: '#F0F6FC',
-                                 fontSize: 12, textAlign: 'center' }}/>
+                        onChange={(e) => setExtendDays({ ...extendDays, [company.id]: e.target.value })}
+                        style={{ width: 64, padding: '7px 8px', borderRadius: 6,
+                          border: '1px solid #30363D', background: '#21262D',
+                          color: '#F0F6FC', fontSize: 12, textAlign: 'center' }}/>
                       <button onClick={() => handleExtend(company)}
-                        style={{ background: '#1C2B4A',
-                                 border: '1px solid #4CC9F0',
-                                 color: '#4CC9F0', padding: '8px 14px',
-                                 borderRadius: 6, cursor: 'pointer',
-                                 fontWeight: 'bold', fontSize: 12 }}>
+                        style={{ background: '#1C2B4A', border: '1px solid #4CC9F0',
+                          color: '#4CC9F0', padding: '8px 14px', borderRadius: 6,
+                          cursor: 'pointer', fontWeight: 'bold', fontSize: 12,
+                          fontFamily: 'Arial' }}>
                         Extend Trial
                       </button>
                     </div>
 
-                    {/* Activate Subscription */}
-                    <div style={{ display: 'flex', gap: 4,
-                                  alignItems: 'center' }}>
+                    {/* Activate Paid Plan */}
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                       <select value={activateMonths[company.id] || 1}
-                        onChange={(e) => setActivateMonths({
-                          ...activateMonths,
-                          [company.id]: e.target.value })}
+                        onChange={(e) => setActivateMonths({ ...activateMonths, [company.id]: e.target.value })}
                         style={{ padding: '7px 8px', borderRadius: 6,
-                                 border: '1px solid #30363D',
-                                 background: '#21262D', color: '#F0F6FC',
-                                 fontSize: 12 }}>
+                          border: '1px solid #30363D', background: '#21262D',
+                          color: '#F0F6FC', fontSize: 12 }}>
                         <option value={1}>1 Month</option>
                         <option value={2}>2 Months</option>
                         <option value={3}>3 Months</option>
@@ -657,45 +523,72 @@ export default function SuperAdmin({ token, user, onLogout }) {
                         <option value={12}>12 Months</option>
                       </select>
                       <button onClick={() => handleActivate(company)}
-                        style={{ background: '#1B3A2A',
-                                 border: '1px solid #52B788',
-                                 color: '#52B788', padding: '8px 14px',
-                                 borderRadius: 6, cursor: 'pointer',
-                                 fontWeight: 'bold', fontSize: 12 }}>
+                        style={{ background: '#1B3A2A', border: '1px solid #52B788',
+                          color: '#52B788', padding: '8px 14px', borderRadius: 6,
+                          cursor: 'pointer', fontWeight: 'bold', fontSize: 12,
+                          fontFamily: 'Arial' }}>
                         Activate Paid
                       </button>
                     </div>
 
-                    {/* Delete */}
+                    {/* Remove Paid Plan — only show if currently paid */}
+                    {isPaid && (
+                      confirmRemovePlan === company.id ? (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <span style={{ color: '#FF6B6B', fontSize: 12 }}>
+                            Remove paid plan for {company.name}?
+                          </span>
+                          <button onClick={() => handleRemovePlan(company)}
+                            style={{ background: '#E65100', border: 'none',
+                              color: 'white', padding: '6px 14px', borderRadius: 6,
+                              cursor: 'pointer', fontWeight: 'bold', fontSize: 12,
+                              fontFamily: 'Arial' }}>
+                            Confirm Remove
+                          </button>
+                          <button onClick={() => setConfirmRemovePlan(null)}
+                            style={{ background: '#21262D', border: '1px solid #30363D',
+                              color: '#8B949E', padding: '6px 14px', borderRadius: 6,
+                              cursor: 'pointer', fontSize: 12, fontFamily: 'Arial' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmRemovePlan(company.id)}
+                          style={{ background: 'transparent',
+                            border: '1px solid #E65100', color: '#FF6B35',
+                            padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
+                            fontSize: 12, fontWeight: 'bold', fontFamily: 'Arial' }}>
+                          Remove Paid Plan
+                        </button>
+                      )
+                    )}
+
+                    {/* Delete Company */}
                     {confirmDelete === company.id ? (
-                      <div style={{ display: 'flex', gap: 6,
-                                    alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center',
+                        marginLeft: 'auto' }}>
                         <span style={{ color: '#FF6B6B', fontSize: 12 }}>
                           Delete {company.name}?
                         </span>
                         <button onClick={() => handleDelete(company)}
-                          style={{ background: '#E63946', border: 'none',
-                                   color: 'white', padding: '6px 14px',
-                                   borderRadius: 6, cursor: 'pointer',
-                                   fontWeight: 'bold', fontSize: 12 }}>
-                          Confirm
+                          style={{ background: '#E63946', border: 'none', color: 'white',
+                            padding: '6px 14px', borderRadius: 6, cursor: 'pointer',
+                            fontWeight: 'bold', fontSize: 12, fontFamily: 'Arial' }}>
+                          Confirm Delete
                         </button>
                         <button onClick={() => setConfirmDelete(null)}
-                          style={{ background: '#21262D',
-                                   border: '1px solid #30363D',
-                                   color: '#8B949E', padding: '6px 14px',
-                                   borderRadius: 6, cursor: 'pointer',
-                                   fontSize: 12 }}>
+                          style={{ background: '#21262D', border: '1px solid #30363D',
+                            color: '#8B949E', padding: '6px 14px', borderRadius: 6,
+                            cursor: 'pointer', fontSize: 12, fontFamily: 'Arial' }}>
                           Cancel
                         </button>
                       </div>
                     ) : (
                       <button onClick={() => setConfirmDelete(company.id)}
-                        style={{ background: 'transparent',
-                                 border: '1px solid #4A0404',
-                                 color: '#FF6B6B', padding: '8px 14px',
-                                 borderRadius: 6, cursor: 'pointer',
-                                 fontSize: 12, marginLeft: 'auto' }}>
+                        style={{ background: 'transparent', border: '1px solid #4A0404',
+                          color: '#FF6B6B', padding: '8px 14px', borderRadius: 6,
+                          cursor: 'pointer', fontSize: 12, marginLeft: 'auto',
+                          fontFamily: 'Arial' }}>
                         Delete Company
                       </button>
                     )}
