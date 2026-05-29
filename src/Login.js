@@ -21,9 +21,6 @@ export default function Login({ onLogin }) {
   const [forgotRole, setForgotRole] = useState('');
   const [pressedRole, setPressedRole] = useState(null);
 
-  // ── ROLE BUTTON PRESS STATE ───────────────────────────
-  const [pressedRole, setPressedRole] = useState(null);
-
   const handleRolePress = (role) => {
     setPressedRole(role);
     setTimeout(() => setPressedRole(null), 220);
