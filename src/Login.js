@@ -20,6 +20,7 @@ export default function Login({ onLogin }) {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotRole, setForgotRole] = useState('');
   const [pressedRole, setPressedRole] = useState(null);
+  const [pressedSignUp, setPressedSignUp] = useState(false);
 
   const handleRolePress = (role) => {
     setPressedRole(role);
@@ -187,9 +188,6 @@ export default function Login({ onLogin }) {
       })}
     </div>
   );
-
-  // ── SIGN UP BUTTON ─────────────────────────────────────
-  const [pressedSignUp, setPressedSignUp] = useState(false);
 
   // ── RESET SCREEN ──────────────────────────────────────
   if (showReset) return (
