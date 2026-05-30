@@ -40,6 +40,7 @@ export default function Sidebar({ user, activePage, setActivePage, onLogout, onC
 
   const items = menuItems[user?.role] || menuItems.viewer;
   const width = collapsed ? 64 : 220;
+  const [showMore, setShowMore] = useState(false);
 
   // Detect mobile on resize
   useEffect(() => {
@@ -70,7 +71,6 @@ export default function Sidebar({ user, activePage, setActivePage, onLogout, onC
     const bottomItems = items.slice(0, 4);
     const moreItems = items.slice(4);
     const hasMore = moreItems.length > 0;
-    const [showMore, setShowMore] = useState(false);
 
     return (
       <>
