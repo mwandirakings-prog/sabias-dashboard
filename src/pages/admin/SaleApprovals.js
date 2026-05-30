@@ -14,12 +14,12 @@ export default function SaleApprovals({ token, user }) {
   const [search, setSearch] = useState('');
   const [processing, setProcessing] = useState(null);
 
-  const h = { headers: { Authorization: `Bearer ${token}` } };
-
   const fetchSales = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API}/api/sales?include_all=true`, h);
+      const res = await axios.get(`${API}/api/sales?include_all=true`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setSales(res.data.data || []);
     } catch (err) {
       setErrorMsg('Failed to load sales.');
@@ -38,7 +38,7 @@ export default function SaleApprovals({ token, user }) {
   const handleApprove = async (sale) => {
     setProcessing(sale.id);
     try {
-      await axios.put(`${API}/api/sales/${sale.id}/approve`, {}, h);
+      await axios.put(`${API}/api/sales/${sale.id}/approve`, {}, { headers: { Authorization: `Bearer ${token}` } });
       showSuccess(`Sale by ${sale.salesperson} approved!`);
       fetchSales();
     } catch (err) {
@@ -51,7 +51,7 @@ export default function SaleApprovals({ token, user }) {
   const handleReject = async (sale) => {
     setProcessing(sale.id);
     try {
-      await axios.put(`${API}/api/sales/${sale.id}/reject`, {}, h);
+      await axios.put(`${API}/api/sales/${sale.id}/reject`, {}, { headers: { Authorization: `Bearer ${token}` } });
       showSuccess(`Sale rejected and stock restored.`);
       fetchSales();
     } catch (err) {
