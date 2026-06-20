@@ -635,7 +635,12 @@ export default function SabiaPOS() {
           <div style={styles.header}>
             <div>
               <div style={styles.logo}>SABIAS POS</div>
-              <div style={{ color: C.orange, fontSize: 11 }}>{user?.company} · {user?.name}</div>
+              <div style={{ color: C.orange, fontSize: 11 }}>
+  {user?.company} · {user?.name}
+  <span style={{ color: C.muted, fontSize: 10, marginLeft: 8 }}>
+    ({user?.role === 'admin' ? 'All Sales' : 'My Sales'})
+  </span>
+</div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <div style={{ ...styles.badge, background: online ? C.green : C.red }}>{online ? "Online" : "Offline"}</div>
