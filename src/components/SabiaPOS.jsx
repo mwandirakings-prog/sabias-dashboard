@@ -58,6 +58,10 @@ async function removePending(ref) {
 
 // ── API HELPER ────────────────────────────────────────────
 async function api(method, path, body, token) {
+  if (!token) {
+    console.error("API called without token!");
+    throw new Error("No token provided");
+  }
   const res = await fetch(API + path, {
     method,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -106,6 +110,7 @@ const QRCodeDisplay = ({ receipt, amount, reference }) => {
 //  MAIN POS APP
 // ══════════════════════════════════════════════════════════
 export default function SabiaPOS() {
+  // ── USE pos_token to avoid conflict with main app ──
   const [token, setToken] = useState(() => localStorage.getItem("pos_token") || "");
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("pos_user") || "null"); } catch { return null; }
@@ -130,6 +135,20 @@ export default function SabiaPOS() {
   const [summaryData, setSummaryData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const barcodeRef = useRef(null);
+
+  // ── CART PERSISTENCE ──────────────────────────────────────
+  useEffect(() => {
+    const savedCart = localStorage.getItem("pos_cart");
+    if (savedCart) {
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("pos_cart", JSON.stringify(cart));
+  }, [cart]);
 
   // ── CHECK PENDING ──────────────────────────────────────
   const checkPending = useCallback(async () => {
@@ -162,10 +181,23 @@ export default function SabiaPOS() {
 
   // ── LOAD INVENTORY ──────────────────────────────────────
   const loadInventory = useCallback(async (tk) => {
+    const authToken = tk || token;
+    if (!authToken) {
+      console.error("No token available for inventory load");
+      return;
+    }
     try {
-      const res = await api("GET", "/api/inventory", null, tk || token);
-      if (res.success) setInventory(res.data.filter(p => p.quantity_in_stock > 0));
-    } catch {}
+      const res = await api("GET", "/api/inventory", null, authToken);
+      if (res.success) {
+        // ✅ FIX: Show ALL products, not just those with stock
+        setInventory(res.data);
+        console.log("✅ Products loaded:", res.data.length);
+      } else {
+        console.error("Failed to load inventory:", res);
+      }
+    } catch (err) {
+      console.error("Inventory error:", err);
+    }
   }, [token]);
 
   // ── ONLINE/OFFLINE ──────────────────────────────────────
@@ -208,12 +240,12 @@ export default function SabiaPOS() {
       });
       const data = await res.json();
       if (data.success) {
-        setToken(data.token);
-        setUser(data.user);
+        // ✅ FIX: Use pos_token to avoid conflict with main app
         localStorage.setItem("pos_token", data.token);
         localStorage.setItem("pos_user", JSON.stringify(data.user));
+        setToken(data.token);
+        setUser(data.user);
         setScreen("session");
-        loadInventory(data.token);
       } else {
         setLoginErr(data.message || "Login failed.");
       }
@@ -224,6 +256,7 @@ export default function SabiaPOS() {
   const logout = () => {
     localStorage.removeItem("pos_token");
     localStorage.removeItem("pos_user");
+    localStorage.removeItem("pos_cart");
     setToken(""); setUser(null); setSession(null);
     setCart([]); setScreen("login");
   };
@@ -282,6 +315,7 @@ export default function SabiaPOS() {
 
   // ── CART OPERATIONS ────────────────────────────────────
   const addToCart = (product) => {
+    console.log("Adding to cart:", product.product);
     setCart(prev => {
       const ex = prev.find(i => i.id === product.id);
       if (ex) {
@@ -331,6 +365,7 @@ export default function SabiaPOS() {
         if (res.success) {
           setLastReceipt({ ...txData, reference: res.reference || txData.offline_reference, total, subtotal, cashier: user?.name });
           setCart([]); setDiscount(0); setCustomerName(""); setCustomerPhone("");
+          localStorage.removeItem("pos_cart");
           setScreen("receipt");
           loadInventory();
           showToast("Sale recorded!", "green");
@@ -342,6 +377,7 @@ export default function SabiaPOS() {
         setPendingCount(c => c + 1);
         setLastReceipt({ ...txData, reference: txData.offline_reference, total, subtotal, cashier: user?.name, offline: true });
         setCart([]); setDiscount(0); setCustomerName(""); setCustomerPhone("");
+        localStorage.removeItem("pos_cart");
         setScreen("receipt");
         showToast("Saved offline - will sync when online.", "orange");
       }
@@ -350,6 +386,7 @@ export default function SabiaPOS() {
       setPendingCount(c => c + 1);
       setLastReceipt({ ...txData, reference: txData.offline_reference, total, subtotal, cashier: user?.name, offline: true });
       setCart([]); setDiscount(0); setCustomerName(""); setCustomerPhone("");
+      localStorage.removeItem("pos_cart");
       setScreen("receipt");
       showToast("Saved offline - will sync when online.", "orange");
     }
@@ -443,6 +480,7 @@ export default function SabiaPOS() {
           </div>
 
           <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+            {/* LEFT: Product grid */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 12, overflow: "hidden" }}>
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                 <input ref={barcodeRef} style={{ ...styles.input, maxWidth: 200 }} value={barcodeInput} onChange={e => setBarcodeInput(e.target.value)} placeholder="Scan barcode..." onKeyDown={e => e.key === "Enter" && handleBarcode(barcodeInput)} />
@@ -450,7 +488,9 @@ export default function SabiaPOS() {
               </div>
               <div style={{ flex: 1, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8, alignContent: "start" }}>
                 {filteredProducts.length === 0 && (
-                  <div style={{ gridColumn: "1/-1", textAlign: "center", color: C.muted, padding: 40 }}>No products found</div>
+                  <div style={{ gridColumn: "1/-1", textAlign: "center", color: C.muted, padding: 40 }}>
+                    {inventory.length === 0 ? "No products in inventory" : "No matching products found"}
+                  </div>
                 )}
                 {filteredProducts.map(p => (
                   <div key={p.id} onClick={() => addToCart(p)} style={{ background: C.white, border: "1.5px solid " + C.border, borderRadius: 10, padding: 10, cursor: "pointer", transition: "all 0.15s" }}
@@ -467,6 +507,7 @@ export default function SabiaPOS() {
               </div>
             </div>
 
+            {/* RIGHT: Cart */}
             <div style={{ width: 340, background: C.white, borderLeft: "1px solid " + C.border, display: "flex", flexDirection: "column" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid " + C.border, fontWeight: "bold", color: C.brown, fontSize: 16 }}>
                 Cart ({cart.length} items)
