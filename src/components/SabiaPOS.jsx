@@ -140,7 +140,8 @@ export default function SabiaPOS() {
   const [showReprint, setShowReprint] = useState(false);
   const [reprintSearch, setReprintSearch] = useState("");
   const [reprintResults, setReprintResults] = useState([]);
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  // eslint-disable-next-line no-unused-vars
+const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   // Branch Reports
   const [showBranchReports, setShowBranchReports] = useState(false);
