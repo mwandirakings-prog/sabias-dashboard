@@ -171,7 +171,7 @@ export default function SabiaPOS() {
         if (res.success) {
           await removePending(tx.offline_reference);
           syncedCount++;
-          console.log(`✅ Synced: ${tx.offline_reference}`);
+          console.log(`Synced: ${tx.offline_reference}`);
         }
       } catch (err) {
         console.error("Sync failed for:", tx.offline_reference, err);
@@ -182,11 +182,11 @@ export default function SabiaPOS() {
     const remaining = await checkPending();
 
     if (syncedCount > 0 && remaining === 0) {
-      showToast(`✅ ${syncedCount} offline sales synced!`, "green");
+      showToast(` ${syncedCount} offline sales synced!`, "green");
     } else if (syncedCount > 0 && remaining > 0) {
-      showToast(`⚠️ ${syncedCount} synced, ${remaining} remaining`, "orange");
+      showToast(` ${syncedCount} synced, ${remaining} remaining`, "orange");
     } else if (remaining > 0) {
-      showToast(`⚠️ Could not sync ${remaining} items. Check connection.`, "red");
+      showToast(` Could not sync ${remaining} items. Check connection.`, "red");
     }
   }, [token, syncing, checkPending]);
 
@@ -207,7 +207,7 @@ export default function SabiaPOS() {
       const res = await api("GET", "/api/inventory", null, authToken);
       if (res.success) {
         setInventory(res.data);
-        console.log("✅ Products loaded:", res.data.length);
+        console.log("Products loaded:", res.data.length);
       }
     } catch (err) {
       console.error("Inventory error:", err);
@@ -241,6 +241,32 @@ export default function SabiaPOS() {
     }
   }, [screen, token, loadInventory]);
 
+  // ── CHECK EXISTING SESSION ──────────────────────────
+  const checkExistingSession = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await api("GET", "/api/pos/sessions/active", null, token);
+      if (res.success && res.data) {
+        setSession(res.data);
+        setScreen("pos");
+        loadInventory();
+        showToast("Continuing open session", "green");
+      } else {
+        setScreen("session");
+      }
+    } catch (err) {
+      console.error("Check session error:", err);
+      setScreen("session");
+    }
+  }, [token, loadInventory]);
+
+  // ── AFTER LOGIN, CHECK FOR SESSION ──────────────────────
+  useEffect(() => {
+    if (token) {
+      checkExistingSession();
+    }
+  }, [token]);
+
   // ── PRINT ──────────────────────────────────────────────
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
@@ -273,7 +299,6 @@ export default function SabiaPOS() {
         localStorage.setItem("pos_user", JSON.stringify(data.user));
         setToken(data.token);
         setUser(data.user);
-        setScreen("session");
       } else {
         setLoginErr(data.message || "Login failed.");
       }
@@ -464,6 +489,7 @@ export default function SabiaPOS() {
     btn: (bg, color = C.white) => ({ background: bg, color, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: "bold", cursor: "pointer", fontSize: 14, fontFamily: "Arial" }),
     input: { padding: "10px 14px", borderRadius: 8, border: "1.5px solid " + C.border, fontSize: 14, outline: "none", background: "#FFFDF8", width: "100%", boxSizing: "border-box" },
     card: { background: C.white, borderRadius: 12, padding: 16, border: "1px solid " + C.border },
+    plain: { fontWeight: "bold", color: C.brown },
   };
 
   // ── RENDER ──────────────────────────────────────────────
@@ -698,8 +724,8 @@ export default function SabiaPOS() {
 
             {/* ── BUTTONS ── */}
             <div style={{ display: "flex", gap: 8, padding: "0 16px 16px" }}>
-              <button style={{ ...styles.btn(C.brown), flex: 1 }} onClick={handlePrint}>🖨️ Print</button>
-              <button style={{ ...styles.btn(C.green), flex: 1 }} onClick={() => setScreen("pos")}>➕ New Sale</button>
+              <button style={{ ...styles.btn(C.brown), flex: 1 }} onClick={handlePrint}>Print</button>
+              <button style={{ ...styles.btn(C.green), flex: 1 }} onClick={() => setScreen("pos")}>New Sale</button>
             </div>
           </div>
         </div>
