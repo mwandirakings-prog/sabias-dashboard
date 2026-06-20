@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import QRCode from "qrcode";
-import { useReactToPrint } from "react-to-print";
 
 // ── CONFIG ────────────────────────────────────────────────
 const API = "https://api.sabiasanalytics.com";
@@ -299,36 +298,58 @@ export default function SabiaPOS() {
       setSummaryData({ total_transactions: 0, total_revenue: 0, cash_total: 0, airtel_total: 0, tnm_total: 0, total_discounts: 0 });
       setTransactions([]);
     }
-  }, [token, session]);  // ← FIXED: Added session here
+  }, [token, session]);
 
   // ── PRINT ──────────────────────────────────────────────
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    pageStyle: `
-      @page { 
-        margin: 10mm; 
-        size: 80mm; 
-      }
-      body { 
-        font-family: Arial, sans-serif; 
-        background: white; 
-        padding: 10px;
-      }
-      * { 
-        color: #3E1F00; 
-      }
-    `,
-    onBeforePrint: () => {
-      console.log("Printing receipt...");
-    },
-    onAfterPrint: () => {
-      console.log("Print complete");
-    },
-    onPrintError: (error) => {
-      console.error("Print error:", error);
-      showToast("Print failed. Please try again.", "red");
+  const handlePrint = useCallback(() => {
+    if (!printRef.current) {
+      showToast("No receipt to print", "red");
+      return;
     }
-  });
+    
+    const content = printRef.current;
+    const html = content.innerHTML;
+    
+    const win = window.open('', '_blank', 'width=400,height=600');
+    if (!win) {
+      showToast("Please allow popups for printing", "orange");
+      return;
+    }
+    
+    win.document.write(`
+      <html>
+        <head>
+          <title>Receipt</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              padding: 20px; 
+              max-width: 350px; 
+              margin: 0 auto;
+            }
+            * { color: #3E1F00; }
+            .text-center { text-align: center; }
+            .border-bottom { border-bottom: 1px dashed #ddd; padding-bottom: 10px; margin-bottom: 10px; }
+            .border-top { border-top: 1px dashed #ddd; padding-top: 10px; margin-top: 10px; }
+            .flex { display: flex; justify-content: space-between; }
+            .bold { font-weight: bold; }
+            .total { font-size: 18px; font-weight: bold; }
+            .muted { color: #888; }
+            img { max-width: 150px; height: auto; }
+          </style>
+        </head>
+        <body>
+          ${html}
+        </body>
+      </html>
+    `);
+    
+    win.document.close();
+    setTimeout(() => {
+      win.focus();
+      win.print();
+    }, 500);
+  }, []);
 
   // ── LOGIN ──────────────────────────────────────────────
   const [loginEmail, setLoginEmail] = useState("");
@@ -788,8 +809,18 @@ export default function SabiaPOS() {
 
             {/* ── BUTTONS ── */}
             <div style={{ display: "flex", gap: 8, padding: "0 16px 16px" }}>
-              <button style={{ ...styles.btn(C.brown), flex: 1 }} onClick={handlePrint}>Print</button>
-              <button style={{ ...styles.btn(C.green), flex: 1 }} onClick={() => setScreen("pos")}>New Sale</button>
+              <button 
+                style={{ ...styles.btn(C.brown), flex: 1 }} 
+                onClick={handlePrint}
+              >
+                Print
+              </button>
+              <button 
+                style={{ ...styles.btn(C.green), flex: 1 }} 
+                onClick={() => setScreen("pos")}
+              >
+                New Sale
+              </button>
             </div>
           </div>
         </div>
