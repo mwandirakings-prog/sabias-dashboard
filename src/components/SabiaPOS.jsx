@@ -299,7 +299,7 @@ export default function SabiaPOS() {
       setSummaryData({ total_transactions: 0, total_revenue: 0, cash_total: 0, airtel_total: 0, tnm_total: 0, total_discounts: 0 });
       setTransactions([]);
     }
-  }, [token, session?.id]);
+  }, [token, session]);  // ← FIXED: Added session here
 
   // ── PRINT ──────────────────────────────────────────────
   const handlePrint = useReactToPrint({
