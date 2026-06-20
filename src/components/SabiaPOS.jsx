@@ -265,7 +265,7 @@ export default function SabiaPOS() {
     if (token) {
       checkExistingSession();
     }
-  }, [token]);
+  }, [token, checkExistingSession]);  // ← FIXED: Added checkExistingSession
 
   // ── PRINT ──────────────────────────────────────────────
   const handlePrint = useReactToPrint({
