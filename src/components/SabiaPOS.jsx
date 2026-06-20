@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import QRCode from "qrcode";
 
 // ── CONFIG ────────────────────────────────────────────────
 const API = "https://api.sabiasanalytics.com";
@@ -65,6 +66,42 @@ async function api(method, path, body, token) {
   return res.json();
 }
 
+// ── QR CODE DISPLAY COMPONENT ─────────────────────────────
+const QRCodeDisplay = ({ receipt, amount, reference }) => {
+  const [qrCode, setQrCode] = useState("");
+
+  useEffect(() => {
+    const receiptUrl = `https://sabiasanalytics.com/receipt?ref=${reference}&amount=${amount}&date=${Date.now()}`;
+    QRCode.toDataURL(receiptUrl, {
+      width: 200,
+      margin: 2,
+      color: {
+        dark: "#3E1F00",
+        light: "#FFFFFF"
+      }
+    })
+      .then(url => setQrCode(url))
+      .catch(err => console.error("QR generation failed:", err));
+  }, [reference, amount]);
+
+  if (!qrCode) {
+    return <div style={{ fontSize: 12, color: "#888", padding: 10 }}>Generating QR...</div>;
+  }
+
+  return (
+    <div style={{ textAlign: "center" }}>
+      <img
+        src={qrCode}
+        alt="Receipt QR Code"
+        style={{ width: 180, height: 180, borderRadius: 8 }}
+      />
+      <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>
+        Scan to view receipt
+      </div>
+    </div>
+  );
+};
+
 // ══════════════════════════════════════════════════════════
 //  MAIN POS APP
 // ══════════════════════════════════════════════════════════
@@ -73,7 +110,7 @@ export default function SabiaPOS() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("pos_user") || "null"); } catch { return null; }
   });
-  const [screen, setScreen] = useState("login"); // login | session | pos | summary | receipt
+  const [screen, setScreen] = useState("login");
   const [session, setSession] = useState(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
@@ -94,26 +131,8 @@ export default function SabiaPOS() {
   const [transactions, setTransactions] = useState([]);
   const barcodeRef = useRef(null);
 
-  // Online/offline detection
-  useEffect(() => {
-    const up = () => setOnline(true);
-    const down = () => setOnline(false);
-    window.addEventListener("online", up);
-    window.addEventListener("offline", down);
-    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
-  }, []);
-
-  // Sync pending when online
-  useEffect(() => {
-    if (online && token) { checkPending(); syncPending(); }
-  }, [online, token]);
-
-  const checkPending = async () => {
-    const p = await getPending();
-    setPendingCount(p.length);
-  };
-
-  const syncPending = async () => {
+  // ── SYNC PENDING ──────────────────────────────────────────
+  const syncPending = useCallback(async () => {
     if (syncing) return;
     const pending = await getPending();
     if (pending.length === 0) return;
@@ -127,14 +146,36 @@ export default function SabiaPOS() {
     setSyncing(false);
     checkPending();
     showToast("Offline sales synced!", "green");
+  }, [token, syncing]);
+
+  const checkPending = async () => {
+    const p = await getPending();
+    setPendingCount(p.length);
   };
+
+  // ── ONLINE/OFFLINE ──────────────────────────────────────
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
+  }, []);
+
+  // ── SYNC WHEN ONLINE ────────────────────────────────────
+  useEffect(() => {
+    if (online && token) {
+      checkPending();
+      syncPending();
+    }
+  }, [online, token, syncPending]);
 
   const showToast = (msg, color = "green") => {
     setToast({ msg, color });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Login
+  // ── LOGIN ──────────────────────────────────────────────────
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginErr, setLoginErr] = useState("");
@@ -170,7 +211,7 @@ export default function SabiaPOS() {
     setCart([]); setScreen("login");
   };
 
-  // Load inventory
+  // ── LOAD INVENTORY ──────────────────────────────────────
   const loadInventory = useCallback(async (tk) => {
     try {
       const res = await api("GET", "/api/inventory", null, tk || token);
@@ -180,9 +221,9 @@ export default function SabiaPOS() {
 
   useEffect(() => {
     if (token && screen === "pos") loadInventory();
-  }, [screen, token]);
+  }, [screen, token, loadInventory]);
 
-  // Open session
+  // ── OPEN SESSION ────────────────────────────────────────
   const [openCash, setOpenCash] = useState("");
   const [sessionLoading, setSessionLoading] = useState(false);
 
@@ -196,7 +237,7 @@ export default function SabiaPOS() {
     setSessionLoading(false);
   };
 
-  // Close session
+  // ── CLOSE SESSION ───────────────────────────────────────
   const [closeCash, setCloseCash] = useState("");
   const closeSession = async () => {
     if (!session) return;
@@ -207,7 +248,7 @@ export default function SabiaPOS() {
     } catch { showToast("Failed to close session.", "red"); }
   };
 
-  // Load summary
+  // ── LOAD SUMMARY ────────────────────────────────────────
   const loadSummary = async () => {
     try {
       const today = new Date().toISOString().split("T")[0];
@@ -220,21 +261,21 @@ export default function SabiaPOS() {
     } catch {}
   };
 
-  // Barcode lookup
+  // ── BARCODE LOOKUP ─────────────────────────────────────
   const handleBarcode = async (code) => {
     if (!code) return;
     const product = inventory.find(p => p.barcode === code || p.product.toLowerCase() === code.toLowerCase());
     if (product) {
       addToCart(product);
       setBarcodeInput("");
-      showToast(`Added: ${product.product}`, "green");
+      showToast("Added: " + product.product, "green");
     } else {
       showToast("Product not found!", "red");
     }
     setBarcodeInput("");
   };
 
-  // Cart operations
+  // ── CART OPERATIONS ────────────────────────────────────
   const addToCart = (product) => {
     setCart(prev => {
       const ex = prev.find(i => i.id === product.id);
@@ -257,7 +298,7 @@ export default function SabiaPOS() {
   const subtotal = cart.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   const total = subtotal - (parseFloat(discount) || 0);
 
-  // Checkout
+  // ── CHECKOUT ────────────────────────────────────────────
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const checkout = async () => {
@@ -297,7 +338,7 @@ export default function SabiaPOS() {
         setLastReceipt({ ...txData, reference: txData.offline_reference, total, subtotal, cashier: user?.name, offline: true });
         setCart([]); setDiscount(0); setCustomerName(""); setCustomerPhone("");
         setScreen("receipt");
-        showToast("Saved offline — will sync when online.", "orange");
+        showToast("Saved offline - will sync when online.", "orange");
       }
     } else {
       await savePending(txData);
@@ -305,7 +346,7 @@ export default function SabiaPOS() {
       setLastReceipt({ ...txData, reference: txData.offline_reference, total, subtotal, cashier: user?.name, offline: true });
       setCart([]); setDiscount(0); setCustomerName(""); setCustomerPhone("");
       setScreen("receipt");
-      showToast("Saved offline — will sync when online.", "orange");
+      showToast("Saved offline - will sync when online.", "orange");
     }
     setCheckoutLoading(false);
   };
@@ -315,7 +356,7 @@ export default function SabiaPOS() {
     (p.category || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  // ── RENDER ────────────────────────────────────────────────
+  // ── STYLES ──────────────────────────────────────────────
   const styles = {
     app: { fontFamily: "Arial, sans-serif", background: C.bg, minHeight: "100vh", position: "relative" },
     toast: { position: "fixed", top: 16, right: 16, zIndex: 9999, background: toast?.color === "red" ? C.red : toast?.color === "orange" ? C.orange : C.green, color: C.white, padding: "12px 20px", borderRadius: 10, fontWeight: "bold", fontSize: 14, boxShadow: "0 4px 12px rgba(0,0,0,0.3)" },
@@ -323,10 +364,11 @@ export default function SabiaPOS() {
     logo: { color: C.gold, fontWeight: "bold", fontSize: 22, letterSpacing: 3 },
     badge: { background: C.orange, color: C.white, borderRadius: 20, padding: "2px 10px", fontSize: 12, fontWeight: "bold" },
     btn: (bg, color = C.white) => ({ background: bg, color, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: "bold", cursor: "pointer", fontSize: 14, fontFamily: "Arial" }),
-    input: { padding: "10px 14px", borderRadius: 8, border: `1.5px solid ${C.border}`, fontSize: 14, outline: "none", background: "#FFFDF8", width: "100%", boxSizing: "border-box" },
-    card: { background: C.white, borderRadius: 12, padding: 16, border: `1px solid ${C.border}` },
+    input: { padding: "10px 14px", borderRadius: 8, border: "1.5px solid " + C.border, fontSize: 14, outline: "none", background: "#FFFDF8", width: "100%", boxSizing: "border-box" },
+    card: { background: C.white, borderRadius: 12, padding: 16, border: "1px solid " + C.border },
   };
 
+  // ── RENDER ──────────────────────────────────────────────
   return (
     <div style={styles.app}>
       {toast && <div style={styles.toast}>{toast.msg}</div>}
@@ -347,7 +389,7 @@ export default function SabiaPOS() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 13, color: C.muted, fontWeight: "bold" }}>Password</label>
-              <input style={{ ...styles.input, marginTop: 4 }} value={loginPass} onChange={e => setLoginPass(e.target.value)} placeholder="••••••••" type="password" onKeyDown={e => e.key === "Enter" && handleLogin()} />
+              <input style={{ ...styles.input, marginTop: 4 }} value={loginPass} onChange={e => setLoginPass(e.target.value)} placeholder="........" type="password" onKeyDown={e => e.key === "Enter" && handleLogin()} />
             </div>
             {loginErr && <div style={{ background: "#FFEBEE", color: C.red, borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13 }}>{loginErr}</div>}
             <button style={{ ...styles.btn(C.brown), width: "100%", padding: "14px 0", fontSize: 16 }} onClick={handleLogin} disabled={loginLoading}>
@@ -365,13 +407,13 @@ export default function SabiaPOS() {
               <div style={{ color: C.gold, fontSize: 24, fontWeight: "bold", letterSpacing: 3 }}>SABIAS POS</div>
               <div style={{ color: C.orange, fontSize: 12, marginTop: 2 }}>Open Cashier Session</div>
             </div>
-            <div style={{ marginBottom: 12, color: C.brown, fontWeight: "bold" }}>👋 Welcome, {user?.name}</div>
+            <div style={{ marginBottom: 12, color: C.brown, fontWeight: "bold" }}>Welcome, {user?.name}</div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 13, color: C.muted, fontWeight: "bold" }}>Opening Cash (MWK)</label>
               <input style={{ ...styles.input, marginTop: 4 }} value={openCash} onChange={e => setOpenCash(e.target.value)} placeholder="0" type="number" />
             </div>
             <button style={{ ...styles.btn(C.green), width: "100%", padding: "14px 0", fontSize: 16 }} onClick={openSession} disabled={sessionLoading}>
-              {sessionLoading ? "Opening..." : "🖥️ Open Session & Start"}
+              {sessionLoading ? "Opening..." : "Open Session & Start"}
             </button>
             <button style={{ ...styles.btn("transparent", C.muted), width: "100%", padding: "10px 0", marginTop: 8, fontSize: 13 }} onClick={logout}>Logout</button>
           </div>
@@ -388,10 +430,10 @@ export default function SabiaPOS() {
               <div style={{ color: C.orange, fontSize: 11 }}>{user?.company} · {user?.name}</div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <div style={{ ...styles.badge, background: online ? C.green : C.red }}>{online ? "🟢 Online" : "🔴 Offline"}</div>
+              <div style={{ ...styles.badge, background: online ? C.green : C.red }}>{online ? "Online" : "Offline"}</div>
               {pendingCount > 0 && <div style={styles.badge}>{pendingCount} pending</div>}
               {syncing && <div style={{ color: C.gold, fontSize: 12 }}>Syncing...</div>}
-              <button style={styles.btn(C.orange)} onClick={loadSummary}>📊 Summary</button>
+              <button style={styles.btn(C.orange)} onClick={loadSummary}>Summary</button>
               <button style={styles.btn(C.red)} onClick={() => { loadSummary(); setScreen("summary"); }}>Close</button>
             </div>
           </div>
@@ -401,7 +443,7 @@ export default function SabiaPOS() {
             <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 12, overflow: "hidden" }}>
               {/* Barcode + search */}
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                <input ref={barcodeRef} style={{ ...styles.input, maxWidth: 200 }} value={barcodeInput} onChange={e => setBarcodeInput(e.target.value)} placeholder="🔍 Scan barcode..." onKeyDown={e => e.key === "Enter" && handleBarcode(barcodeInput)} />
+                <input ref={barcodeRef} style={{ ...styles.input, maxWidth: 200 }} value={barcodeInput} onChange={e => setBarcodeInput(e.target.value)} placeholder="Scan barcode..." onKeyDown={e => e.key === "Enter" && handleBarcode(barcodeInput)} />
                 <input style={{ ...styles.input, flex: 1 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search product..." />
               </div>
               {/* Products */}
@@ -410,7 +452,7 @@ export default function SabiaPOS() {
                   <div style={{ gridColumn: "1/-1", textAlign: "center", color: C.muted, padding: 40 }}>No products found</div>
                 )}
                 {filteredProducts.map(p => (
-                  <div key={p.id} onClick={() => addToCart(p)} style={{ background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 10, padding: 10, cursor: "pointer", transition: "all 0.15s" }}
+                  <div key={p.id} onClick={() => addToCart(p)} style={{ background: C.white, border: "1.5px solid " + C.border, borderRadius: 10, padding: 10, cursor: "pointer", transition: "all 0.15s" }}
                     onMouseEnter={e => e.currentTarget.style.borderColor = C.orange}
                     onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
                     <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{p.category}</div>
@@ -425,38 +467,38 @@ export default function SabiaPOS() {
             </div>
 
             {/* RIGHT: Cart */}
-            <div style={{ width: 340, background: C.white, borderLeft: `1px solid ${C.border}`, display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, fontWeight: "bold", color: C.brown, fontSize: 16 }}>
-                🛒 Cart ({cart.length} items)
+            <div style={{ width: 340, background: C.white, borderLeft: "1px solid " + C.border, display: "flex", flexDirection: "column" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid " + C.border, fontWeight: "bold", color: C.brown, fontSize: 16 }}>
+                Cart ({cart.length} items)
               </div>
               {/* Cart items */}
               <div style={{ flex: 1, overflowY: "auto", padding: "8px 12px" }}>
-                {cart.length === 0 && <div style={{ textAlign: "center", color: C.muted, padding: 40, fontSize: 14 }}>Cart is empty<br />Tap a product to add</div>}
+                {cart.length === 0 && <div style={{ textAlign: "center", color: C.muted, padding: 40, fontSize: 14 }}>Cart is empty</div>}
                 {cart.map(item => (
-                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
+                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid " + C.border }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: "bold", fontSize: 13, color: C.brown }}>{item.product}</div>
                       <div style={{ fontSize: 12, color: C.muted }}>{fmt(item.unit_price)} each</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <button style={{ ...styles.btn(C.brown, C.gold), padding: "4px 10px", fontSize: 16 }} onClick={() => updateQty(item.id, item.quantity - 1)}>−</button>
+                      <button style={{ ...styles.btn(C.brown, C.gold), padding: "4px 10px", fontSize: 16 }} onClick={() => updateQty(item.id, item.quantity - 1)}>-</button>
                       <span style={{ fontWeight: "bold", minWidth: 24, textAlign: "center" }}>{item.quantity}</span>
                       <button style={{ ...styles.btn(C.brown, C.gold), padding: "4px 10px", fontSize: 16 }} onClick={() => updateQty(item.id, item.quantity + 1)}>+</button>
                     </div>
                     <div style={{ minWidth: 80, textAlign: "right", fontWeight: "bold", color: C.orange, fontSize: 13 }}>{fmt(item.quantity * item.unit_price)}</div>
-                    <button style={{ ...styles.btn(C.red), padding: "4px 8px", fontSize: 12 }} onClick={() => removeFromCart(item.id)}>✕</button>
+                    <button style={{ ...styles.btn(C.red), padding: "4px 8px", fontSize: 12 }} onClick={() => removeFromCart(item.id)}>X</button>
                   </div>
                 ))}
               </div>
 
               {/* Customer */}
-              <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
+              <div style={{ padding: "8px 12px", borderTop: "1px solid " + C.border }}>
                 <input style={{ ...styles.input, marginBottom: 6, fontSize: 13 }} value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Customer name (optional)" />
                 <input style={{ ...styles.input, fontSize: 13 }} value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone (optional)" />
               </div>
 
               {/* Totals */}
-              <div style={{ padding: "10px 16px", background: C.bg, borderTop: `1px solid ${C.border}` }}>
+              <div style={{ padding: "10px 16px", background: C.bg, borderTop: "1px solid " + C.border }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 14 }}>
                   <span style={{ color: C.muted }}>Subtotal</span>
                   <span style={{ fontWeight: "bold" }}>{fmt(subtotal)}</span>
@@ -473,12 +515,12 @@ export default function SabiaPOS() {
                 {/* Payment method */}
                 <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
                   {["Cash", "Airtel Money", "TNM Mpamba", "Bank transfer", "Voucher"].map(m => (
-                    <button key={m} style={{ ...styles.btn(payMethod === m ? C.brown : C.bg, payMethod === m ? C.gold : C.brown), flex: 1, padding: "8px 4px", fontSize: 11, border: `1px solid ${C.border}` }} onClick={() => setPayMethod(m)}>{m}</button>
+                    <button key={m} style={{ ...styles.btn(payMethod === m ? C.brown : C.bg, payMethod === m ? C.gold : C.brown), flex: 1, padding: "8px 4px", fontSize: 11, border: "1px solid " + C.border }} onClick={() => setPayMethod(m)}>{m}</button>
                   ))}
                 </div>
 
                 <button style={{ ...styles.btn(C.green), width: "100%", padding: "14px 0", fontSize: 16 }} onClick={checkout} disabled={checkoutLoading || cart.length === 0}>
-                  {checkoutLoading ? "Processing..." : `✅ Charge ${fmt(total)}`}
+                  {checkoutLoading ? "Processing..." : "Charge " + fmt(total)}
                 </button>
               </div>
             </div>
@@ -489,17 +531,20 @@ export default function SabiaPOS() {
       {/* ── RECEIPT ── */}
       {screen === "receipt" && lastReceipt && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: 20, background: C.bg }}>
-          <div style={{ ...styles.card, width: "100%", maxWidth: 400 }}>
+          <div style={{ ...styles.card, width: "100%", maxWidth: 420 }}>
             <div style={{ background: C.brown, borderRadius: 10, padding: "16px 20px", textAlign: "center", marginBottom: 16 }}>
               <div style={{ color: C.gold, fontSize: 24, fontWeight: "bold", letterSpacing: 3 }}>SABIAS POS</div>
               <div style={{ color: C.orange, fontSize: 11 }}>{user?.company}</div>
             </div>
 
             {lastReceipt.offline && (
-              <div style={{ background: "#FFF3E0", border: `1px solid ${C.orange}`, borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: C.orange, fontWeight: "bold" }}>
-                ⚠ Saved offline — will sync when online
+              <div style={{ background: "#FFF3E0", border: "1px solid " + C.orange, borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: C.orange, fontWeight: "bold" }}>
+                Saved offline - will sync when online
               </div>
             )}
+
+            {/* QR CODE */}
+            <QRCodeDisplay receipt={lastReceipt} amount={lastReceipt.total} reference={lastReceipt.reference} />
 
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
               <span style={{ color: C.muted }}>Receipt #</span>
@@ -518,16 +563,16 @@ export default function SabiaPOS() {
               <span>{new Date().toLocaleString()}</span>
             </div>
 
-            <div style={{ borderTop: `1px dashed ${C.border}`, margin: "12px 0" }} />
+            <div style={{ borderTop: "1px dashed " + C.border, margin: "12px 0" }} />
 
             {lastReceipt.items?.map((item, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
-                <span>{item.product} × {item.quantity}</span>
+                <span>{item.product} x {item.quantity}</span>
                 <span style={{ fontWeight: "bold" }}>{fmt(item.quantity * item.unit_price)}</span>
               </div>
             ))}
 
-            <div style={{ borderTop: `1px dashed ${C.border}`, margin: "12px 0" }} />
+            <div style={{ borderTop: "1px dashed " + C.border, margin: "12px 0" }} />
 
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}>
               <span style={{ color: C.muted }}>Subtotal</span>
@@ -554,8 +599,8 @@ export default function SabiaPOS() {
             </div>
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button style={{ ...styles.btn(C.brown), flex: 1 }} onClick={() => window.print()}>🖨️ Print</button>
-              <button style={{ ...styles.btn(C.green), flex: 1 }} onClick={() => setScreen("pos")}>➕ New Sale</button>
+              <button style={{ ...styles.btn(C.brown), flex: 1 }} onClick={() => window.print()}>Print</button>
+              <button style={{ ...styles.btn(C.green), flex: 1 }} onClick={() => setScreen("pos")}>New Sale</button>
             </div>
           </div>
         </div>
@@ -570,7 +615,7 @@ export default function SabiaPOS() {
               <div style={{ color: C.orange, fontSize: 12 }}>{new Date().toLocaleDateString()}</div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button style={styles.btn(C.orange)} onClick={() => setScreen("pos")}>← Back to POS</button>
+              <button style={styles.btn(C.orange)} onClick={() => setScreen("pos")}>Back to POS</button>
               <button style={styles.btn(C.red)} onClick={logout}>Logout</button>
             </div>
           </div>
@@ -608,7 +653,7 @@ export default function SabiaPOS() {
             <div style={{ fontWeight: "bold", color: C.brown, marginBottom: 12 }}>Today's Transactions</div>
             {transactions.length === 0 && <div style={{ color: C.muted, textAlign: "center", padding: 20 }}>No transactions yet</div>}
             {transactions.map(tx => (
-              <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+              <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid " + C.border }}>
                 <div>
                   <div style={{ fontWeight: "bold", fontSize: 13, color: C.brown }}>{tx.reference_number}</div>
                   <div style={{ fontSize: 12, color: C.muted }}>{tx.customer_name} · {tx.payment_method}</div>
