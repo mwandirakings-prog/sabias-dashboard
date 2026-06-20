@@ -5,6 +5,7 @@ const menuItems = {
     { label: 'Dashboard',     key: 'dashboard',     icon: '📊' },
     { label: 'Sales',         key: 'sales',         icon: '💰' },
     { label: 'Inventory',     key: 'inventory',     icon: '📦' },
+    { label: 'Point of Sale', key: 'pos',           icon: '🖥️' },
     { label: 'Users',         key: 'users',         icon: '👥' },
     { label: 'Analytics',     key: 'analytics',     icon: '📈' },
     { label: 'Forecasting',   key: 'forecasting',   icon: '🔮' },
@@ -15,6 +16,7 @@ const menuItems = {
   ],
   salesperson: [
     { label: 'Dashboard',     key: 'dashboard',     icon: '📊' },
+    { label: 'Point of Sale', key: 'pos',           icon: '🖥️' },
     { label: 'Cart Sell',     key: 'cart',          icon: '🛒' },
     { label: 'New Sale',      key: 'newsale',       icon: '➕' },
     { label: 'Products',      key: 'products',      icon: '📦' },

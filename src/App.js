@@ -1,3 +1,4 @@
+import SabiaPOS from './components/SabiaPOS';
 import ViewerForecasting from './pages/viewer/ViewerForecasting';
 import ViewerReports from './pages/viewer/ViewerReports';
 import ViewerInventory from './pages/viewer/ViewerInventory';
@@ -173,6 +174,7 @@ function AdminApp({ user, token, logout }) {
       case 'notifications': return <Notifications token={token} user={user}/>;
       case 'settings':      return <Settings user={user} token={token}/>;
       case 'approvals':     return <SaleApprovals token={token} user={user}/>;
+      case 'pos':           return <SabiaPOS token={token} user={user}/>;
       default:              return <AdminDashboard token={token} user={user}/>;
     }
   };
@@ -251,6 +253,7 @@ function SalespersonApp({ user, token, logout }) {
       case 'cart':          return <SalespersonCart token={token} user={user}/>;
       case 'notifications': return <SalespersonNotifications token={token} user={user}/>;
       case 'profile':       return <Profile token={token} user={user}/>;
+      case 'pos':           return <SabiaPOS token={token} user={user}/>;
       default:              return <SalespersonDashboard token={token} user={user}/>;
     }
   };
