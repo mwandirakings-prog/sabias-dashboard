@@ -265,16 +265,69 @@ export default function SabiaPOS() {
     if (token) {
       checkExistingSession();
     }
-  }, [token, checkExistingSession]);  // ← FIXED: Added checkExistingSession
+  }, [token, checkExistingSession]);
+
+  // ── LOAD SUMMARY ──────────────────────────────────────
+  const loadSummary = useCallback(async () => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      console.log("Loading summary for:", today);
+      console.log("Current session:", session);
+      
+      const [sumRes, txRes] = await Promise.all([
+        api("GET", `/api/pos/summary?date=${today}`, null, token),
+        api("GET", `/api/pos/transactions?session_id=${session?.id}`, null, token),
+      ]);
+      
+      console.log("Summary response:", sumRes);
+      console.log("Transactions response:", txRes);
+      
+      if (sumRes.success) {
+        setSummaryData(sumRes.data);
+      } else {
+        console.error("Summary error:", sumRes);
+        setSummaryData({ total_transactions: 0, total_revenue: 0, cash_total: 0, airtel_total: 0, tnm_total: 0, total_discounts: 0 });
+      }
+      if (txRes.success) {
+        setTransactions(txRes.data);
+      } else {
+        setTransactions([]);
+      }
+    } catch (err) {
+      console.error("Load summary error:", err);
+      showToast("Error loading summary", "red");
+      setSummaryData({ total_transactions: 0, total_revenue: 0, cash_total: 0, airtel_total: 0, tnm_total: 0, total_discounts: 0 });
+      setTransactions([]);
+    }
+  }, [token, session?.id]);
 
   // ── PRINT ──────────────────────────────────────────────
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
     pageStyle: `
-      @page { margin: 10mm; }
-      body { font-family: Arial, sans-serif; background: white; }
-      * { color: #3E1F00; }
-    `
+      @page { 
+        margin: 10mm; 
+        size: 80mm; 
+      }
+      body { 
+        font-family: Arial, sans-serif; 
+        background: white; 
+        padding: 10px;
+      }
+      * { 
+        color: #3E1F00; 
+      }
+    `,
+    onBeforePrint: () => {
+      console.log("Printing receipt...");
+    },
+    onAfterPrint: () => {
+      console.log("Print complete");
+    },
+    onPrintError: (error) => {
+      console.error("Print error:", error);
+      showToast("Print failed. Please try again.", "red");
+    }
   });
 
   // ── LOGIN ──────────────────────────────────────────────
@@ -331,6 +384,7 @@ export default function SabiaPOS() {
         setSession(res.data);
         setScreen("pos");
         loadInventory();
+        showToast("Session opened!", "green");
       } else {
         showToast(res.error || "Failed to open session.", "red");
       }
@@ -343,27 +397,38 @@ export default function SabiaPOS() {
   // ── CLOSE SESSION ─────────────────────────────────────
   const [closeCash, setCloseCash] = useState("");
   const closeSession = async () => {
-    if (!session) return;
+    if (!session) {
+      showToast("No active session to close.", "red");
+      return;
+    }
+    
+    const cash = parseFloat(closeCash) || 0;
+    if (cash <= 0) {
+      showToast("Please enter closing cash amount.", "orange");
+      return;
+    }
+    
     try {
-      await api("PUT", `/api/pos/sessions/${session.id}/close`, { closing_cash: parseFloat(closeCash) || 0 }, token);
-      await loadSummary();
-      setScreen("summary");
-    } catch {
+      console.log("Closing session:", session.id);
+      const res = await api("PUT", `/api/pos/sessions/${session.id}/close`, 
+        { closing_cash: cash }, 
+        token
+      );
+      
+      console.log("Close session response:", res);
+      
+      if (res.success) {
+        showToast(`Session closed! Total revenue: ${fmt(res.data.total_revenue)}`, "green");
+        setSession(null);
+        await loadSummary();
+        setScreen("summary");
+      } else {
+        showToast(res.error || "Failed to close session.", "red");
+      }
+    } catch (err) {
+      console.error("Close session error:", err);
       showToast("Failed to close session.", "red");
     }
-  };
-
-  // ── LOAD SUMMARY ──────────────────────────────────────
-  const loadSummary = async () => {
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const [sumRes, txRes] = await Promise.all([
-        api("GET", `/api/pos/summary?date=${today}`, null, token),
-        api("GET", `/api/pos/transactions?session_id=${session?.id}`, null, token),
-      ]);
-      if (sumRes.success) setSummaryData(sumRes.data);
-      if (txRes.success) setTransactions(txRes.data);
-    } catch {}
   };
 
   // ── BARCODE ────────────────────────────────────────────
@@ -489,7 +554,6 @@ export default function SabiaPOS() {
     btn: (bg, color = C.white) => ({ background: bg, color, border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: "bold", cursor: "pointer", fontSize: 14, fontFamily: "Arial" }),
     input: { padding: "10px 14px", borderRadius: 8, border: "1.5px solid " + C.border, fontSize: 14, outline: "none", background: "#FFFDF8", width: "100%", boxSizing: "border-box" },
     card: { background: C.white, borderRadius: 12, padding: 16, border: "1px solid " + C.border },
-    plain: { fontWeight: "bold", color: C.brown },
   };
 
   // ── RENDER ──────────────────────────────────────────────
@@ -559,7 +623,7 @@ export default function SabiaPOS() {
               {pendingCount > 0 && !syncing && (
                 <button style={styles.btn(C.orange)} onClick={syncPending}>Sync Now</button>
               )}
-              <button style={styles.btn(C.orange)} onClick={loadSummary}>Summary</button>
+              <button style={styles.btn(C.orange)} onClick={() => { loadSummary(); setScreen("summary"); }}>Summary</button>
               <button style={styles.btn(C.red)} onClick={() => { loadSummary(); setScreen("summary"); }}>Close</button>
             </div>
           </div>
@@ -758,12 +822,12 @@ export default function SabiaPOS() {
           {summaryData && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 20 }}>
               {[
-                { label: "Transactions", value: summaryData.total_transactions, color: C.brown },
-                { label: "Total Revenue", value: fmt(summaryData.total_revenue), color: C.green },
-                { label: "Cash", value: fmt(summaryData.cash_total), color: C.orange },
-                { label: "Airtel Money", value: fmt(summaryData.airtel_total), color: "#E65100" },
-                { label: "TNM Mpamba", value: fmt(summaryData.tnm_total), color: C.brown },
-                { label: "Discounts", value: fmt(summaryData.total_discounts), color: C.red },
+                { label: "Transactions", value: summaryData.total_transactions || 0, color: C.brown },
+                { label: "Total Revenue", value: fmt(summaryData.total_revenue || 0), color: C.green },
+                { label: "Cash", value: fmt(summaryData.cash_total || 0), color: C.orange },
+                { label: "Airtel Money", value: fmt(summaryData.airtel_total || 0), color: "#E65100" },
+                { label: "TNM Mpamba", value: fmt(summaryData.tnm_total || 0), color: C.brown },
+                { label: "Discounts", value: fmt(summaryData.total_discounts || 0), color: C.red },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ ...styles.card, textAlign: "center" }}>
                   <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>{label}</div>
