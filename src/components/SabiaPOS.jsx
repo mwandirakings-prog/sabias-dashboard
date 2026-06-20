@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import QRCode from "qrcode";
+import { useReactToPrint } from "react-to-print";
 
 // ── CONFIG ────────────────────────────────────────────────
 const API = "https://api.sabiasanalytics.com";
@@ -58,13 +59,14 @@ async function removePending(ref) {
 
 // ── API HELPER ────────────────────────────────────────────
 async function api(method, path, body, token) {
-  if (!token) {
-    console.error("API called without token!");
+  const authToken = token || localStorage.getItem("pos_token") || localStorage.getItem("token");
+  if (!authToken) {
+    console.error("No token available!");
     throw new Error("No token provided");
   }
   const res = await fetch(API + path, {
     method,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
     body: body ? JSON.stringify(body) : undefined,
   });
   return res.json();
@@ -79,10 +81,7 @@ const QRCodeDisplay = ({ receipt, amount, reference }) => {
     QRCode.toDataURL(receiptUrl, {
       width: 200,
       margin: 2,
-      color: {
-        dark: "#3E1F00",
-        light: "#FFFFFF"
-      }
+      color: { dark: "#3E1F00", light: "#FFFFFF" }
     })
       .then(url => setQrCode(url))
       .catch(err => console.error("QR generation failed:", err));
@@ -94,14 +93,8 @@ const QRCodeDisplay = ({ receipt, amount, reference }) => {
 
   return (
     <div style={{ textAlign: "center" }}>
-      <img
-        src={qrCode}
-        alt="Receipt QR Code"
-        style={{ width: 180, height: 180, borderRadius: 8 }}
-      />
-      <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>
-        Scan to view receipt
-      </div>
+      <img src={qrCode} alt="Receipt QR Code" style={{ width: 180, height: 180, borderRadius: 8 }} />
+      <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>Scan to view receipt</div>
     </div>
   );
 };
@@ -110,8 +103,8 @@ const QRCodeDisplay = ({ receipt, amount, reference }) => {
 //  MAIN POS APP
 // ══════════════════════════════════════════════════════════
 export default function SabiaPOS() {
-  // ── USE pos_token to avoid conflict with main app ──
-  const [token, setToken] = useState(() => localStorage.getItem("pos_token") || "");
+  // ── STATE ──────────────────────────────────────────────
+  const [token, setToken] = useState(() => localStorage.getItem("pos_token") || localStorage.getItem("token") || "");
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("pos_user") || "null"); } catch { return null; }
   });
@@ -121,7 +114,6 @@ export default function SabiaPOS() {
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
-  // POS state
   const [inventory, setInventory] = useState([]);
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState("");
@@ -135,14 +127,13 @@ export default function SabiaPOS() {
   const [summaryData, setSummaryData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const barcodeRef = useRef(null);
+  const printRef = useRef(null);
 
-  // ── CART PERSISTENCE ──────────────────────────────────────
+  // ── CART PERSISTENCE ──────────────────────────────────
   useEffect(() => {
     const savedCart = localStorage.getItem("pos_cart");
     if (savedCart) {
-      try {
-        setCart(JSON.parse(savedCart));
-      } catch {}
+      try { setCart(JSON.parse(savedCart)); } catch {}
     }
   }, []);
 
@@ -152,25 +143,51 @@ export default function SabiaPOS() {
 
   // ── CHECK PENDING ──────────────────────────────────────
   const checkPending = useCallback(async () => {
-    const p = await getPending();
-    setPendingCount(p.length);
+    try {
+      const p = await getPending();
+      setPendingCount(p.length);
+      return p.length;
+    } catch { return 0; }
   }, []);
 
   // ── SYNC PENDING ──────────────────────────────────────
   const syncPending = useCallback(async () => {
-    if (syncing) return;
+    if (syncing) {
+      console.log("Sync already in progress, skipping...");
+      return;
+    }
     const pending = await getPending();
-    if (pending.length === 0) return;
+    if (pending.length === 0) {
+      console.log("No pending items to sync");
+      return;
+    }
+    console.log(`Syncing ${pending.length} pending items...`);
     setSyncing(true);
+    let syncedCount = 0;
+
     for (const tx of pending) {
       try {
         const res = await api("POST", "/api/pos/transactions", tx, token);
-        if (res.success) await removePending(tx.offline_reference);
-      } catch {}
+        if (res.success) {
+          await removePending(tx.offline_reference);
+          syncedCount++;
+          console.log(`✅ Synced: ${tx.offline_reference}`);
+        }
+      } catch (err) {
+        console.error("Sync failed for:", tx.offline_reference, err);
+      }
     }
+
     setSyncing(false);
-    checkPending();
-    showToast("Offline sales synced!", "green");
+    const remaining = await checkPending();
+
+    if (syncedCount > 0 && remaining === 0) {
+      showToast(`✅ ${syncedCount} offline sales synced!`, "green");
+    } else if (syncedCount > 0 && remaining > 0) {
+      showToast(`⚠️ ${syncedCount} synced, ${remaining} remaining`, "orange");
+    } else if (remaining > 0) {
+      showToast(`⚠️ Could not sync ${remaining} items. Check connection.`, "red");
+    }
   }, [token, syncing, checkPending]);
 
   // ── SHOW TOAST ─────────────────────────────────────────
@@ -189,11 +206,8 @@ export default function SabiaPOS() {
     try {
       const res = await api("GET", "/api/inventory", null, authToken);
       if (res.success) {
-        // ✅ FIX: Show ALL products, not just those with stock
         setInventory(res.data);
         console.log("✅ Products loaded:", res.data.length);
-      } else {
-        console.error("Failed to load inventory:", res);
       }
     } catch (err) {
       console.error("Inventory error:", err);
@@ -212,10 +226,13 @@ export default function SabiaPOS() {
   // ── SYNC WHEN ONLINE ────────────────────────────────────
   useEffect(() => {
     if (online && token) {
-      checkPending();
-      syncPending();
+      checkPending().then(count => {
+        if (count > 0 && !syncing) {
+          syncPending();
+        }
+      });
     }
-  }, [online, token, checkPending, syncPending]);
+  }, [online, token, syncing, checkPending, syncPending]);
 
   // ── LOAD INVENTORY WHEN POS OPENS ──────────────────────
   useEffect(() => {
@@ -224,14 +241,25 @@ export default function SabiaPOS() {
     }
   }, [screen, token, loadInventory]);
 
-  // ── LOGIN ──────────────────────────────────────────────────
+  // ── PRINT ──────────────────────────────────────────────
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    pageStyle: `
+      @page { margin: 10mm; }
+      body { font-family: Arial, sans-serif; background: white; }
+      * { color: #3E1F00; }
+    `
+  });
+
+  // ── LOGIN ──────────────────────────────────────────────
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginErr, setLoginErr] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
   const handleLogin = async () => {
-    setLoginLoading(true); setLoginErr("");
+    setLoginLoading(true);
+    setLoginErr("");
     try {
       const res = await fetch(API + "/api/auth/login", {
         method: "POST",
@@ -240,7 +268,7 @@ export default function SabiaPOS() {
       });
       const data = await res.json();
       if (data.success) {
-        // ✅ FIX: Use pos_token to avoid conflict with main app
+        localStorage.setItem("token", data.token);
         localStorage.setItem("pos_token", data.token);
         localStorage.setItem("pos_user", JSON.stringify(data.user));
         setToken(data.token);
@@ -249,7 +277,9 @@ export default function SabiaPOS() {
       } else {
         setLoginErr(data.message || "Login failed.");
       }
-    } catch { setLoginErr("Cannot connect. Check internet."); }
+    } catch {
+      setLoginErr("Cannot connect. Check internet.");
+    }
     setLoginLoading(false);
   };
 
@@ -257,11 +287,14 @@ export default function SabiaPOS() {
     localStorage.removeItem("pos_token");
     localStorage.removeItem("pos_user");
     localStorage.removeItem("pos_cart");
-    setToken(""); setUser(null); setSession(null);
-    setCart([]); setScreen("login");
+    setToken("");
+    setUser(null);
+    setSession(null);
+    setCart([]);
+    setScreen("login");
   };
 
-  // ── OPEN SESSION ────────────────────────────────────────
+  // ── OPEN SESSION ──────────────────────────────────────
   const [openCash, setOpenCash] = useState("");
   const [sessionLoading, setSessionLoading] = useState(false);
 
@@ -269,13 +302,20 @@ export default function SabiaPOS() {
     setSessionLoading(true);
     try {
       const res = await api("POST", "/api/pos/sessions/open", { opening_cash: parseFloat(openCash) || 0 }, token);
-      if (res.success) { setSession(res.data); setScreen("pos"); loadInventory(); }
-      else showToast(res.error || "Failed to open session.", "red");
-    } catch { showToast("Cannot open session.", "red"); }
+      if (res.success) {
+        setSession(res.data);
+        setScreen("pos");
+        loadInventory();
+      } else {
+        showToast(res.error || "Failed to open session.", "red");
+      }
+    } catch {
+      showToast("Cannot open session.", "red");
+    }
     setSessionLoading(false);
   };
 
-  // ── CLOSE SESSION ───────────────────────────────────────
+  // ── CLOSE SESSION ─────────────────────────────────────
   const [closeCash, setCloseCash] = useState("");
   const closeSession = async () => {
     if (!session) return;
@@ -283,10 +323,12 @@ export default function SabiaPOS() {
       await api("PUT", `/api/pos/sessions/${session.id}/close`, { closing_cash: parseFloat(closeCash) || 0 }, token);
       await loadSummary();
       setScreen("summary");
-    } catch { showToast("Failed to close session.", "red"); }
+    } catch {
+      showToast("Failed to close session.", "red");
+    }
   };
 
-  // ── LOAD SUMMARY ────────────────────────────────────────
+  // ── LOAD SUMMARY ──────────────────────────────────────
   const loadSummary = async () => {
     try {
       const today = new Date().toISOString().split("T")[0];
@@ -299,7 +341,7 @@ export default function SabiaPOS() {
     } catch {}
   };
 
-  // ── BARCODE LOOKUP ─────────────────────────────────────
+  // ── BARCODE ────────────────────────────────────────────
   const handleBarcode = async (code) => {
     if (!code) return;
     const product = inventory.find(p => p.barcode === code || p.product.toLowerCase() === code.toLowerCase());
@@ -313,13 +355,15 @@ export default function SabiaPOS() {
     setBarcodeInput("");
   };
 
-  // ── CART OPERATIONS ────────────────────────────────────
+  // ── CART OPERATIONS ──────────────────────────────────
   const addToCart = (product) => {
-    console.log("Adding to cart:", product.product);
     setCart(prev => {
       const ex = prev.find(i => i.id === product.id);
       if (ex) {
-        if (ex.quantity >= product.quantity_in_stock) { showToast("Not enough stock!", "red"); return prev; }
+        if (ex.quantity >= product.quantity_in_stock) {
+          showToast("Not enough stock!", "red");
+          return prev;
+        }
         return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
       }
       return [...prev, { ...product, quantity: 1 }];
@@ -330,14 +374,17 @@ export default function SabiaPOS() {
   const updateQty = (id, qty) => {
     if (qty < 1) { removeFromCart(id); return; }
     const prod = inventory.find(p => p.id === id);
-    if (prod && qty > prod.quantity_in_stock) { showToast("Not enough stock!", "red"); return; }
+    if (prod && qty > prod.quantity_in_stock) {
+      showToast("Not enough stock!", "red");
+      return;
+    }
     setCart(prev => prev.map(i => i.id === id ? { ...i, quantity: qty } : i));
   };
 
   const subtotal = cart.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   const total = subtotal - (parseFloat(discount) || 0);
 
-  // ── CHECKOUT ────────────────────────────────────────────
+  // ── CHECKOUT ──────────────────────────────────────────
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const checkout = async () => {
@@ -364,7 +411,10 @@ export default function SabiaPOS() {
         const res = await api("POST", "/api/pos/transactions", txData, token);
         if (res.success) {
           setLastReceipt({ ...txData, reference: res.reference || txData.offline_reference, total, subtotal, cashier: user?.name });
-          setCart([]); setDiscount(0); setCustomerName(""); setCustomerPhone("");
+          setCart([]);
+          setDiscount(0);
+          setCustomerName("");
+          setCustomerPhone("");
           localStorage.removeItem("pos_cart");
           setScreen("receipt");
           loadInventory();
@@ -376,7 +426,10 @@ export default function SabiaPOS() {
         await savePending(txData);
         setPendingCount(c => c + 1);
         setLastReceipt({ ...txData, reference: txData.offline_reference, total, subtotal, cashier: user?.name, offline: true });
-        setCart([]); setDiscount(0); setCustomerName(""); setCustomerPhone("");
+        setCart([]);
+        setDiscount(0);
+        setCustomerName("");
+        setCustomerPhone("");
         localStorage.removeItem("pos_cart");
         setScreen("receipt");
         showToast("Saved offline - will sync when online.", "orange");
@@ -385,7 +438,10 @@ export default function SabiaPOS() {
       await savePending(txData);
       setPendingCount(c => c + 1);
       setLastReceipt({ ...txData, reference: txData.offline_reference, total, subtotal, cashier: user?.name, offline: true });
-      setCart([]); setDiscount(0); setCustomerName(""); setCustomerPhone("");
+      setCart([]);
+      setDiscount(0);
+      setCustomerName("");
+      setCustomerPhone("");
       localStorage.removeItem("pos_cart");
       setScreen("receipt");
       showToast("Saved offline - will sync when online.", "orange");
@@ -474,6 +530,9 @@ export default function SabiaPOS() {
               <div style={{ ...styles.badge, background: online ? C.green : C.red }}>{online ? "Online" : "Offline"}</div>
               {pendingCount > 0 && <div style={styles.badge}>{pendingCount} pending</div>}
               {syncing && <div style={{ color: C.gold, fontSize: 12 }}>Syncing...</div>}
+              {pendingCount > 0 && !syncing && (
+                <button style={styles.btn(C.orange)} onClick={syncPending}>Sync Now</button>
+              )}
               <button style={styles.btn(C.orange)} onClick={loadSummary}>Summary</button>
               <button style={styles.btn(C.red)} onClick={() => { loadSummary(); setScreen("summary"); }}>Close</button>
             </div>
@@ -569,74 +628,78 @@ export default function SabiaPOS() {
       {screen === "receipt" && lastReceipt && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: 20, background: C.bg }}>
           <div style={{ ...styles.card, width: "100%", maxWidth: 420 }}>
-            <div style={{ background: C.brown, borderRadius: 10, padding: "16px 20px", textAlign: "center", marginBottom: 16 }}>
-              <div style={{ color: C.gold, fontSize: 24, fontWeight: "bold", letterSpacing: 3 }}>SABIAS POS</div>
-              <div style={{ color: C.orange, fontSize: 11 }}>{user?.company}</div>
-            </div>
-
-            {lastReceipt.offline && (
-              <div style={{ background: "#FFF3E0", border: "1px solid " + C.orange, borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: C.orange, fontWeight: "bold" }}>
-                Saved offline - will sync when online
+            {/* ── PRINTABLE CONTENT ── */}
+            <div ref={printRef} style={{ padding: 16 }}>
+              <div style={{ background: C.brown, borderRadius: 10, padding: "16px 20px", textAlign: "center", marginBottom: 16 }}>
+                <div style={{ color: C.gold, fontSize: 24, fontWeight: "bold", letterSpacing: 3 }}>SABIAS POS</div>
+                <div style={{ color: C.orange, fontSize: 11 }}>{user?.company}</div>
               </div>
-            )}
 
-            <QRCodeDisplay receipt={lastReceipt} amount={lastReceipt.total} reference={lastReceipt.reference} />
+              {lastReceipt.offline && (
+                <div style={{ background: "#FFF3E0", border: "1px solid " + C.orange, borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: C.orange, fontWeight: "bold" }}>
+                  Saved offline - will sync when online
+                </div>
+              )}
 
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
-              <span style={{ color: C.muted }}>Receipt #</span>
-              <span style={{ fontWeight: "bold", color: C.brown }}>{lastReceipt.reference}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
-              <span style={{ color: C.muted }}>Customer</span>
-              <span>{lastReceipt.customer_name}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
-              <span style={{ color: C.muted }}>Cashier</span>
-              <span>{lastReceipt.cashier}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
-              <span style={{ color: C.muted }}>Date</span>
-              <span>{new Date().toLocaleString()}</span>
-            </div>
+              <QRCodeDisplay receipt={lastReceipt} amount={lastReceipt.total} reference={lastReceipt.reference} />
 
-            <div style={{ borderTop: "1px dashed " + C.border, margin: "12px 0" }} />
-
-            {lastReceipt.items?.map((item, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
-                <span>{item.product} x {item.quantity}</span>
-                <span style={{ fontWeight: "bold" }}>{fmt(item.quantity * item.unit_price)}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
+                <span style={{ color: C.muted }}>Receipt #</span>
+                <span style={{ fontWeight: "bold", color: C.brown }}>{lastReceipt.reference}</span>
               </div>
-            ))}
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
+                <span style={{ color: C.muted }}>Customer</span>
+                <span>{lastReceipt.customer_name}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
+                <span style={{ color: C.muted }}>Cashier</span>
+                <span>{lastReceipt.cashier}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
+                <span style={{ color: C.muted }}>Date</span>
+                <span>{new Date().toLocaleString()}</span>
+              </div>
 
-            <div style={{ borderTop: "1px dashed " + C.border, margin: "12px 0" }} />
+              <div style={{ borderTop: "1px dashed " + C.border, margin: "12px 0" }} />
 
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}>
-              <span style={{ color: C.muted }}>Subtotal</span>
-              <span>{fmt(lastReceipt.subtotal)}</span>
-            </div>
-            {lastReceipt.discount > 0 && (
+              {lastReceipt.items?.map((item, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
+                  <span>{item.product} x {item.quantity}</span>
+                  <span style={{ fontWeight: "bold" }}>{fmt(item.quantity * item.unit_price)}</span>
+                </div>
+              ))}
+
+              <div style={{ borderTop: "1px dashed " + C.border, margin: "12px 0" }} />
+
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}>
-                <span style={{ color: C.red }}>Discount</span>
-                <span style={{ color: C.red }}>- {fmt(lastReceipt.discount)}</span>
+                <span style={{ color: C.muted }}>Subtotal</span>
+                <span>{fmt(lastReceipt.subtotal)}</span>
               </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontWeight: "bold", fontSize: 16 }}>TOTAL</span>
-              <span style={{ fontWeight: "bold", fontSize: 18, color: C.orange }}>{fmt(lastReceipt.total)}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, fontSize: 13 }}>
-              <span style={{ color: C.muted }}>Payment</span>
-              <span style={{ fontWeight: "bold", color: C.green }}>{lastReceipt.payment_method}</span>
+              {lastReceipt.discount > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}>
+                  <span style={{ color: C.red }}>Discount</span>
+                  <span style={{ color: C.red }}>- {fmt(lastReceipt.discount)}</span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                <span style={{ fontWeight: "bold", fontSize: 16 }}>TOTAL</span>
+                <span style={{ fontWeight: "bold", fontSize: 18, color: C.orange }}>{fmt(lastReceipt.total)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, fontSize: 13 }}>
+                <span style={{ color: C.muted }}>Payment</span>
+                <span style={{ fontWeight: "bold", color: C.green }}>{lastReceipt.payment_method}</span>
+              </div>
+
+              <div style={{ textAlign: "center", color: C.muted, fontSize: 12, marginBottom: 16 }}>
+                Thank you for shopping at {user?.company}!<br />
+                Powered by SABIAS Analytics
+              </div>
             </div>
 
-            <div style={{ textAlign: "center", color: C.muted, fontSize: 12, marginBottom: 16 }}>
-              Thank you for shopping at {user?.company}!<br />
-              Powered by SABIAS Analytics
-            </div>
-
-            <div style={{ display: "flex", gap: 8 }}>
-              <button style={{ ...styles.btn(C.brown), flex: 1 }} onClick={() => window.print()}>Print</button>
-              <button style={{ ...styles.btn(C.green), flex: 1 }} onClick={() => setScreen("pos")}>New Sale</button>
+            {/* ── BUTTONS ── */}
+            <div style={{ display: "flex", gap: 8, padding: "0 16px 16px" }}>
+              <button style={{ ...styles.btn(C.brown), flex: 1 }} onClick={handlePrint}>🖨️ Print</button>
+              <button style={{ ...styles.btn(C.green), flex: 1 }} onClick={() => setScreen("pos")}>➕ New Sale</button>
             </div>
           </div>
         </div>
