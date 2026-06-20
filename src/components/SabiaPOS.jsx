@@ -131,7 +131,13 @@ export default function SabiaPOS() {
   const [transactions, setTransactions] = useState([]);
   const barcodeRef = useRef(null);
 
-  // ── SYNC PENDING ──────────────────────────────────────────
+  // ── CHECK PENDING ──────────────────────────────────────
+  const checkPending = useCallback(async () => {
+    const p = await getPending();
+    setPendingCount(p.length);
+  }, []);
+
+  // ── SYNC PENDING ──────────────────────────────────────
   const syncPending = useCallback(async () => {
     if (syncing) return;
     const pending = await getPending();
@@ -146,12 +152,21 @@ export default function SabiaPOS() {
     setSyncing(false);
     checkPending();
     showToast("Offline sales synced!", "green");
-  }, [token, syncing]);
+  }, [token, syncing, checkPending]);
 
-  const checkPending = async () => {
-    const p = await getPending();
-    setPendingCount(p.length);
+  // ── SHOW TOAST ─────────────────────────────────────────
+  const showToast = (msg, color = "green") => {
+    setToast({ msg, color });
+    setTimeout(() => setToast(null), 3000);
   };
+
+  // ── LOAD INVENTORY ──────────────────────────────────────
+  const loadInventory = useCallback(async (tk) => {
+    try {
+      const res = await api("GET", "/api/inventory", null, tk || token);
+      if (res.success) setInventory(res.data.filter(p => p.quantity_in_stock > 0));
+    } catch {}
+  }, [token]);
 
   // ── ONLINE/OFFLINE ──────────────────────────────────────
   useEffect(() => {
@@ -168,12 +183,14 @@ export default function SabiaPOS() {
       checkPending();
       syncPending();
     }
-  }, [online, token, syncPending]);
+  }, [online, token, checkPending, syncPending]);
 
-  const showToast = (msg, color = "green") => {
-    setToast({ msg, color });
-    setTimeout(() => setToast(null), 3000);
-  };
+  // ── LOAD INVENTORY WHEN POS OPENS ──────────────────────
+  useEffect(() => {
+    if (token && screen === "pos") {
+      loadInventory();
+    }
+  }, [screen, token, loadInventory]);
 
   // ── LOGIN ──────────────────────────────────────────────────
   const [loginEmail, setLoginEmail] = useState("");
@@ -210,18 +227,6 @@ export default function SabiaPOS() {
     setToken(""); setUser(null); setSession(null);
     setCart([]); setScreen("login");
   };
-
-  // ── LOAD INVENTORY ──────────────────────────────────────
-  const loadInventory = useCallback(async (tk) => {
-    try {
-      const res = await api("GET", "/api/inventory", null, tk || token);
-      if (res.success) setInventory(res.data.filter(p => p.quantity_in_stock > 0));
-    } catch {}
-  }, [token]);
-
-  useEffect(() => {
-    if (token && screen === "pos") loadInventory();
-  }, [screen, token, loadInventory]);
 
   // ── OPEN SESSION ────────────────────────────────────────
   const [openCash, setOpenCash] = useState("");
@@ -423,7 +428,6 @@ export default function SabiaPOS() {
       {/* ── MAIN POS ── */}
       {screen === "pos" && (
         <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-          {/* Header */}
           <div style={styles.header}>
             <div>
               <div style={styles.logo}>SABIAS POS</div>
@@ -439,14 +443,11 @@ export default function SabiaPOS() {
           </div>
 
           <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-            {/* LEFT: Product grid */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 12, overflow: "hidden" }}>
-              {/* Barcode + search */}
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                 <input ref={barcodeRef} style={{ ...styles.input, maxWidth: 200 }} value={barcodeInput} onChange={e => setBarcodeInput(e.target.value)} placeholder="Scan barcode..." onKeyDown={e => e.key === "Enter" && handleBarcode(barcodeInput)} />
                 <input style={{ ...styles.input, flex: 1 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search product..." />
               </div>
-              {/* Products */}
               <div style={{ flex: 1, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8, alignContent: "start" }}>
                 {filteredProducts.length === 0 && (
                   <div style={{ gridColumn: "1/-1", textAlign: "center", color: C.muted, padding: 40 }}>No products found</div>
@@ -466,12 +467,10 @@ export default function SabiaPOS() {
               </div>
             </div>
 
-            {/* RIGHT: Cart */}
             <div style={{ width: 340, background: C.white, borderLeft: "1px solid " + C.border, display: "flex", flexDirection: "column" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid " + C.border, fontWeight: "bold", color: C.brown, fontSize: 16 }}>
                 Cart ({cart.length} items)
               </div>
-              {/* Cart items */}
               <div style={{ flex: 1, overflowY: "auto", padding: "8px 12px" }}>
                 {cart.length === 0 && <div style={{ textAlign: "center", color: C.muted, padding: 40, fontSize: 14 }}>Cart is empty</div>}
                 {cart.map(item => (
@@ -491,13 +490,11 @@ export default function SabiaPOS() {
                 ))}
               </div>
 
-              {/* Customer */}
               <div style={{ padding: "8px 12px", borderTop: "1px solid " + C.border }}>
                 <input style={{ ...styles.input, marginBottom: 6, fontSize: 13 }} value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Customer name (optional)" />
                 <input style={{ ...styles.input, fontSize: 13 }} value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone (optional)" />
               </div>
 
-              {/* Totals */}
               <div style={{ padding: "10px 16px", background: C.bg, borderTop: "1px solid " + C.border }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 14 }}>
                   <span style={{ color: C.muted }}>Subtotal</span>
@@ -512,7 +509,6 @@ export default function SabiaPOS() {
                   <span style={{ fontWeight: "bold", fontSize: 18, color: C.orange }}>{fmt(total)}</span>
                 </div>
 
-                {/* Payment method */}
                 <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
                   {["Cash", "Airtel Money", "TNM Mpamba", "Bank transfer", "Voucher"].map(m => (
                     <button key={m} style={{ ...styles.btn(payMethod === m ? C.brown : C.bg, payMethod === m ? C.gold : C.brown), flex: 1, padding: "8px 4px", fontSize: 11, border: "1px solid " + C.border }} onClick={() => setPayMethod(m)}>{m}</button>
@@ -543,7 +539,6 @@ export default function SabiaPOS() {
               </div>
             )}
 
-            {/* QR CODE */}
             <QRCodeDisplay receipt={lastReceipt} amount={lastReceipt.total} reference={lastReceipt.reference} />
 
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
@@ -620,7 +615,6 @@ export default function SabiaPOS() {
             </div>
           </div>
 
-          {/* Close session */}
           {session && (
             <div style={{ ...styles.card, marginBottom: 16 }}>
               <div style={{ fontWeight: "bold", color: C.brown, marginBottom: 10 }}>Close Session</div>
