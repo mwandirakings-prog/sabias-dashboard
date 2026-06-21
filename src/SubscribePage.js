@@ -57,7 +57,6 @@ const PLANS = [
       'Product Performance',
       'Salesperson Performance',
       'CSV/PDF Reports Export',
-      'Basic Forecasting',
       '2 Admins + 2 Salespersons',
       'Unlimited Viewers',
       'Email + WhatsApp Support'
@@ -69,7 +68,7 @@ const PLANS = [
       'Reconciliation',
       'Multi-Till Dashboard',
       'Advanced Analytics',
-      'Advanced Forecasting',
+      'Forecasting',
       'API Access'
     ],
   },
