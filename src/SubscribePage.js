@@ -8,46 +8,78 @@ const PLANS = [
     key: 'starter',
     name: 'Starter',
     price: 5000,
+    daily_limit: 10,
+    users: 1,
     color: '#4CC9F0',
     border: '#1C2B4A',
     features: [
-      'Up to 2 salespersons',
-      'Sales recording and history',
-      'Basic inventory management',
-      'Email stock alerts',
-      'Basic analytics dashboard',
+      '10 transactions per day',
+      'POS Access',
+      'Offline Mode',
+      'Basic Sales Recording',
+      '1 User',
+      'Email Support'
     ],
-    notIncluded: ['CSV export', 'Revenue forecasting', 'API access'],
+    notIncluded: [
+      'Inventory Management',
+      'Barcode Scanner',
+      'QR Receipts',
+      'Loyalty Program',
+      'Advanced Reports',
+      'API Access'
+    ],
   },
   {
     key: 'professional',
     name: 'Professional',
     price: 10000,
+    daily_limit: 50,
+    users: 2,
     color: '#FF6B35',
     border: '#4A1A00',
     popular: true,
     features: [
-      'Up to 5 salespersons',
-      'Everything in Starter',
-      'Advanced analytics',
-      'CSV export and reports',
-      '1 API key for integrations',
+      '50 transactions per day',
+      'Full POS Access',
+      'Offline Mode',
+      'Inventory Management',
+      'Barcode Scanner',
+      'QR Receipts',
+      '2 Users',
+      'Email + WhatsApp Support'
     ],
-    notIncluded: ['Revenue forecasting', '3 API keys'],
+    notIncluded: [
+      'Loyalty Program',
+      'Branch Reports',
+      'Till Reports',
+      'Reconciliation',
+      'Multi-Till Dashboard',
+      'API Access'
+    ],
   },
   {
     key: 'enterprise',
     name: 'Enterprise',
     price: 50000,
+    daily_limit: 'Unlimited',
+    users: '10+',
     color: '#52B788',
     border: '#1B4332',
     features: [
-      'Unlimited salespersons',
-      'Everything in Professional',
-      'AI revenue forecasting',
-      '3 API keys for integrations',
-      'Priority WhatsApp support',
-      'Custom onboarding session',
+      'Unlimited transactions',
+      'Full POS Access',
+      'Offline Mode',
+      'Inventory Management',
+      'Barcode Scanner',
+      'QR Receipts',
+      'Loyalty Program',
+      'Branch Reports',
+      'Till Reports',
+      'Reconciliation',
+      'Multi-Till Dashboard',
+      '10+ Users',
+      'API Access',
+      'Priority Support'
     ],
     notIncluded: [],
   },
@@ -98,7 +130,6 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
       );
 
       if (res.data.success && res.data.checkoutUrl) {
-        // Redirect to OneKhusa checkout page
         window.location.href = res.data.checkoutUrl;
       } else {
         setError('Failed to initiate payment. Please try again.');
@@ -243,6 +274,30 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
                   }}>
                     /month
                   </span>
+                </div>
+
+                {/* Daily Limit Badge */}
+                <div style={{
+                  marginTop: 6,
+                  background: '#FFF8F0',
+                  border: '1px solid #FFE8D0',
+                  borderRadius: 6,
+                  padding: '4px 10px',
+                  display: 'inline-block',
+                  fontSize: 12,
+                  fontWeight: 'bold',
+                  color: '#3E1F00'
+                }}>
+                   {plan.daily_limit} transactions/day
+                </div>
+
+                {/* Users Badge */}
+                <div style={{
+                  marginTop: 4,
+                  fontSize: 12,
+                  color: '#888'
+                }}>
+                  👤 {plan.users} user{plan.users !== 1 ? 's' : ''}
                 </div>
 
                 <div style={{ marginTop: 14 }}>
