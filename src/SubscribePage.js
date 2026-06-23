@@ -150,15 +150,25 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
       { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setBillingHistory(res.data.data || []))
       .catch(() => {});
-      
-    return () => {
-      if (pollingInterval) clearInterval(pollingInterval);
-    };
   }, [token]);
+
+  // Cleanup polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
 
   const startPolling = (trans_id, reference) => {
     let attempts = 0;
     const maxAttempts = 18;
+    
+    // Clear any existing interval
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
     
     const interval = setInterval(async () => {
       attempts++;
@@ -170,6 +180,7 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
         
         if (res.data.success && res.data.status === 'completed') {
           clearInterval(interval);
+          setPollingInterval(null);
           setPollingStatus({
             completed: true,
             message: 'Payment successful! Your subscription is now active.'
@@ -180,6 +191,7 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
           }, 3000);
         } else if (res.data.status === 'failed') {
           clearInterval(interval);
+          setPollingInterval(null);
           setPollingStatus({
             failed: true,
             message: 'Payment failed. Please try again.'
@@ -191,6 +203,7 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
       
       if (attempts >= maxAttempts) {
         clearInterval(interval);
+        setPollingInterval(null);
         setPollingStatus({
           timeout: true,
           message: 'Payment is taking longer than expected. Please check your phone or contact support.'
