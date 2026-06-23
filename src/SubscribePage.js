@@ -124,6 +124,15 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [billingHistory, setBillingHistory] = useState([]);
+  
+  // CtechPay states
+  const [showCtechPayOptions, setShowCtechPayOptions] = useState(false);
+  const [ctechPayMethod, setCtechPayMethod] = useState(null);
+  const [ctechPayPhone, setCtechPayPhone] = useState('');
+  const [ctechPayPhoneInput, setCtechPayPhoneInput] = useState(false);
+  const [ctechPayError, setCtechPayError] = useState('');
+  const [pollingStatus, setPollingStatus] = useState(null);
+  const [pollingInterval, setPollingInterval] = useState(null);
 
   const fmt = (n) => new Intl.NumberFormat().format(n);
 
@@ -141,14 +150,69 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
       { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setBillingHistory(res.data.data || []))
       .catch(() => {});
+      
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
   }, [token]);
 
-  const handleCheckout = async () => {
+  const startPolling = (trans_id, reference) => {
+    let attempts = 0;
+    const maxAttempts = 18;
+    
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await axios.get(
+          `${API}/api/billing/ctechpay/status/${trans_id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        if (res.data.success && res.data.status === 'completed') {
+          clearInterval(interval);
+          setPollingStatus({
+            completed: true,
+            message: 'Payment successful! Your subscription is now active.'
+          });
+          setTimeout(() => {
+            if (onClose) onClose();
+            window.location.reload();
+          }, 3000);
+        } else if (res.data.status === 'failed') {
+          clearInterval(interval);
+          setPollingStatus({
+            failed: true,
+            message: 'Payment failed. Please try again.'
+          });
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+      
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setPollingStatus({
+          timeout: true,
+          message: 'Payment is taking longer than expected. Please check your phone or contact support.'
+        });
+      }
+    }, 5000);
+    
+    setPollingInterval(interval);
+  };
+
+  const handleCheckout = async (gateway) => {
     setLoading(true);
     setError('');
+    
     try {
+      const payload = { 
+        plan: selectedPlan, 
+        months: selectedMonths
+      };
+      
       const res = await axios.post(`${API}/api/billing/checkout`,
-        { plan: selectedPlan, months: selectedMonths },
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -158,8 +222,59 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
         setError('Failed to initiate payment. Please try again.');
       }
     } catch (err) {
-      setError(err.response?.data?.error
-        || 'Payment initiation failed. Please try again.');
+      setError(err.response?.data?.error || 'Payment initiation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCtechPayCheckout = async (paymentMethod, phone) => {
+    setLoading(true);
+    setError('');
+    setCtechPayError('');
+    
+    try {
+      const payload = {
+        plan: selectedPlan,
+        months: selectedMonths,
+        payment_method: paymentMethod
+      };
+      
+      if (phone) {
+        payload.phone = phone;
+      }
+      
+      const res = await axios.post(`${API}/api/billing/ctechpay/checkout`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        if (res.data.checkoutUrl) {
+          // Card payment - redirect to hosted page
+          window.location.href = res.data.checkoutUrl;
+        } else if (res.data.trans_id) {
+          // Mobile money - start polling
+          setShowCtechPayOptions(false);
+          setPollingStatus({
+            trans_id: res.data.trans_id,
+            reference: res.data.reference,
+            message: res.data.message || 'Payment initiated. Please approve on your phone.'
+          });
+          startPolling(res.data.trans_id, res.data.reference);
+        } else if (res.data.bank_details) {
+          // Bank transfer - show details
+          setShowCtechPayOptions(false);
+          setPollingStatus({
+            bank_details: res.data.bank_details,
+            message: 'Please complete bank transfer'
+          });
+        }
+      } else {
+        setError('Failed to initiate CtechPay payment. Please try again.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'CtechPay payment failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -299,7 +414,6 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
                   </span>
                 </div>
 
-                {/* Daily Limit Badge */}
                 <div style={{
                   marginTop: 6,
                   background: '#FFF8F0',
@@ -314,13 +428,12 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
                    {plan.daily_limit} transactions/day
                 </div>
 
-                {/* Users Badge */}
                 <div style={{
                   marginTop: 4,
                   fontSize: 12,
                   color: '#888'
                 }}>
-                  👤 {plan.users} user{plan.users !== 1 ? 's' : ''}
+                  {plan.users} user{plan.users !== 1 ? 's' : ''}
                 </div>
 
                 <div style={{ marginTop: 14 }}>
@@ -481,46 +594,429 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
             </div>
           )}
 
-          {/* Pay Button */}
-          <button onClick={handleCheckout} disabled={loading}
-            style={{
-              width: '100%', padding: '16px 0',
-              background: loading ? '#ccc' : '#FF6B35',
-              border: 'none', borderRadius: 10, color: 'white',
-              fontWeight: 'bold', fontSize: 16, cursor: loading
-                ? 'not-allowed' : 'pointer',
-              fontFamily: 'Arial', transition: 'all 0.2s',
-              letterSpacing: 0.5
+          {/* Payment Options - Two separate methods */}
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            gap: 14, marginBottom: 20
+          }}>
+            
+            {/* Option 1: OneKhusa (Existing) */}
+            <div style={{
+              border: '2px solid #FF6B35',
+              borderRadius: 12,
+              padding: '16px 20px',
+              background: '#FFF8F0'
             }}>
-            {loading
-              ? 'Initiating Payment...'
-              : `Pay MWK ${fmt(amount)} via OneKhusa`}
-          </button>
-
-          <div style={{
-            textAlign: 'center', color: '#888',
-            fontSize: 11, marginTop: 10
-          }}>
-            You will be redirected to the secure OneKhusa checkout page
-            to pay via Airtel Money, TNM Mpamba or Bank Transfer.
-            Your subscription activates automatically after payment.
-          </div>
-
-          {/* Payment methods */}
-          <div style={{
-            display: 'flex', justifyContent: 'center',
-            gap: 16, marginTop: 14
-          }}>
-            {['Airtel Money', 'TNM Mpamba', 'Bank Transfer'].map(m => (
-              <div key={m} style={{
-                background: '#FFE8D0', borderRadius: 6,
-                padding: '4px 12px', fontSize: 11,
-                color: '#7A5C3A', fontWeight: 'bold'
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', flexWrap: 'wrap', gap: 10
               }}>
-                {m}
+                <div>
+                  <div style={{
+                    color: '#FF6B35', fontWeight: 'bold', fontSize: 15
+                  }}>
+                    Pay via OneKhusa
+                  </div>
+                  <div style={{
+                    color: '#888', fontSize: 12, marginTop: 4
+                  }}>
+                    Airtel Money · TNM Mpamba · Bank Transfer
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleCheckout('onekhusa')}
+                  disabled={loading}
+                  style={{
+                    padding: '10px 24px',
+                    background: loading ? '#ccc' : '#FF6B35',
+                    border: 'none', borderRadius: 6,
+                    color: 'white', fontWeight: 'bold', fontSize: 14,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontFamily: 'Arial'
+                  }}
+                >
+                  Pay MWK {fmt(amount)}
+                </button>
               </div>
-            ))}
+            </div>
+
+            {/* Option 2: CtechPay (New) */}
+            <div style={{
+              border: '2px solid #52B788',
+              borderRadius: 12,
+              padding: '16px 20px',
+              background: '#F5FFF8'
+            }}>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', flexWrap: 'wrap', gap: 10
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    color: '#2D6A4F', fontWeight: 'bold', fontSize: 15
+                  }}>
+                    Pay via CtechPay
+                    <span style={{
+                      background: '#52B788',
+                      color: 'white',
+                      fontSize: 9,
+                      padding: '2px 10px',
+                      borderRadius: 10,
+                      marginLeft: 8
+                    }}>
+                      NEW
+                    </span>
+                  </div>
+                  <div style={{
+                    color: '#888', fontSize: 12, marginTop: 4
+                  }}>
+                    Credit/Debit Card · Airtel Money · TNM Mpamba · Bank Transfer
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCtechPayOptions(!showCtechPayOptions);
+                    setCtechPayError('');
+                  }}
+                  disabled={loading}
+                  style={{
+                    padding: '10px 24px',
+                    background: loading ? '#ccc' : '#2D6A4F',
+                    border: 'none', borderRadius: 6,
+                    color: 'white', fontWeight: 'bold', fontSize: 14,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontFamily: 'Arial'
+                  }}
+                >
+                  {showCtechPayOptions ? 'Hide Options' : `Pay MWK ${fmt(amount)}`}
+                </button>
+              </div>
+
+              {/* CtechPay Payment Method Selection */}
+              {showCtechPayOptions && (
+                <div style={{
+                  marginTop: 16,
+                  padding: '16px 20px',
+                  background: 'white',
+                  border: '1px solid #A5D6A7',
+                  borderRadius: 10
+                }}>
+                  <div style={{
+                    color: '#3E1F00', fontWeight: 'bold',
+                    fontSize: 14, marginBottom: 12
+                  }}>
+                    Select CtechPay Payment Method
+                  </div>
+                  
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: 10
+                  }}>
+                    <button
+                      onClick={() => handleCtechPayCheckout('card')}
+                      disabled={loading}
+                      style={{
+                        padding: '12px',
+                        borderRadius: 8,
+                        border: '1px solid #A5D6A7',
+                        background: '#F5FFF8',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        textAlign: 'center',
+                        fontFamily: 'Arial'
+                      }}
+                    >
+                      <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 13 }}>
+                        Credit/Debit Card
+                      </div>
+                      <div style={{ color: '#888', fontSize: 11, marginTop: 4 }}>
+                        Visa · Mastercard
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setCtechPayPhoneInput(true);
+                        setCtechPayMethod('airtel');
+                        setCtechPayError('');
+                      }}
+                      disabled={loading}
+                      style={{
+                        padding: '12px',
+                        borderRadius: 8,
+                        border: '1px solid #A5D6A7',
+                        background: '#F5FFF8',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        textAlign: 'center',
+                        fontFamily: 'Arial'
+                      }}
+                    >
+                      <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 13 }}>
+                        Airtel Money
+                      </div>
+                      <div style={{ color: '#888', fontSize: 11, marginTop: 4 }}>
+                        Mobile Money
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setCtechPayPhoneInput(true);
+                        setCtechPayMethod('tnm');
+                        setCtechPayError('');
+                      }}
+                      disabled={loading}
+                      style={{
+                        padding: '12px',
+                        borderRadius: 8,
+                        border: '1px solid #A5D6A7',
+                        background: '#F5FFF8',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        textAlign: 'center',
+                        fontFamily: 'Arial'
+                      }}
+                    >
+                      <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 13 }}>
+                        TNM Mpamba
+                      </div>
+                      <div style={{ color: '#888', fontSize: 11, marginTop: 4 }}>
+                        Mobile Money
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => handleCtechPayCheckout('bank')}
+                      disabled={loading}
+                      style={{
+                        padding: '12px',
+                        borderRadius: 8,
+                        border: '1px solid #A5D6A7',
+                        background: '#F5FFF8',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        textAlign: 'center',
+                        fontFamily: 'Arial'
+                      }}
+                    >
+                      <div style={{ color: '#3E1F00', fontWeight: 'bold', fontSize: 13 }}>
+                        Bank Transfer
+                      </div>
+                      <div style={{ color: '#888', fontSize: 11, marginTop: 4 }}>
+                        Standard Bank
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Phone Input for Mobile Money */}
+                  {ctechPayPhoneInput && (
+                    <div style={{ marginTop: 14 }}>
+                      <input
+                        type="tel"
+                        placeholder="Enter phone number (e.g., 0999123456)"
+                        value={ctechPayPhone}
+                        onChange={(e) => setCtechPayPhone(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: 8,
+                          border: '1px solid #A5D6A7',
+                          fontSize: 14,
+                          fontFamily: 'Arial',
+                          background: 'white'
+                        }}
+                      />
+                      <div style={{
+                        display: 'flex', gap: 12, marginTop: 10
+                      }}>
+                        <button
+                          onClick={() => {
+                            setCtechPayPhoneInput(false);
+                            setCtechPayMethod(null);
+                            setCtechPayPhone('');
+                            setCtechPayError('');
+                          }}
+                          style={{
+                            padding: '8px 20px',
+                            background: '#f0f0f0',
+                            border: 'none',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontFamily: 'Arial'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (ctechPayPhone) {
+                              handleCtechPayCheckout(ctechPayMethod, ctechPayPhone);
+                            } else {
+                              setCtechPayError('Please enter your phone number');
+                            }
+                          }}
+                          disabled={loading}
+                          style={{
+                            padding: '8px 20px',
+                            background: loading ? '#ccc' : '#2D6A4F',
+                            border: 'none',
+                            borderRadius: 6,
+                            color: 'white',
+                            fontWeight: 'bold',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            fontSize: 13,
+                            fontFamily: 'Arial'
+                          }}
+                        >
+                          Pay MWK {fmt(amount)}
+                        </button>
+                      </div>
+                      {ctechPayError && (
+                        <div style={{
+                          color: '#C62828', fontSize: 12, marginTop: 6
+                        }}>
+                          {ctechPayError}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Polling / Bank Transfer Status */}
+          {pollingStatus && (
+            <div style={{
+              marginTop: 16,
+              padding: '16px 20px',
+              borderRadius: 10,
+              background: pollingStatus.completed 
+                ? '#E8F5E9' 
+                : pollingStatus.failed || pollingStatus.timeout
+                  ? '#FFEBEE'
+                  : '#FFF8E1',
+              border: `1px solid ${
+                pollingStatus.completed 
+                  ? '#A5D6A7' 
+                  : pollingStatus.failed || pollingStatus.timeout
+                    ? '#FFCDD2'
+                    : '#FFE082'
+              }`
+            }}>
+              {pollingStatus.bank_details ? (
+                <>
+                  <div style={{
+                    color: '#3E1F00',
+                    fontWeight: 'bold',
+                    fontSize: 14,
+                    marginBottom: 8
+                  }}>
+                    Bank Transfer Details
+                  </div>
+                  <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+                    <div><strong>Bank:</strong> {pollingStatus.bank_details.bank}</div>
+                    <div><strong>Account Name:</strong> {pollingStatus.bank_details.account_name}</div>
+                    <div><strong>Account Number:</strong> {pollingStatus.bank_details.account_number}</div>
+                    <div><strong>Branch:</strong> {pollingStatus.bank_details.branch}</div>
+                    <div><strong>Reference:</strong> {pollingStatus.bank_details.reference}</div>
+                  </div>
+                  <div style={{
+                    marginTop: 12,
+                    padding: '10px',
+                    background: '#FFF3E0',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    color: '#E65100'
+                  }}>
+                    Please use the reference number above when making the transfer.
+                    Your subscription will be activated once we confirm the payment.
+                  </div>
+                  <button
+                    onClick={() => setPollingStatus(null)}
+                    style={{
+                      marginTop: 12,
+                      padding: '6px 16px',
+                      background: '#FF6B35',
+                      border: 'none',
+                      borderRadius: 6,
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontWeight: 'bold',
+                      fontFamily: 'Arial'
+                    }}
+                  >
+                    Close
+                  </button>
+                </>
+              ) : pollingStatus.completed ? (
+                <>
+                  <div style={{ color: '#2D6A4F', fontWeight: 'bold' }}>
+                    ✓ {pollingStatus.message}
+                  </div>
+                  <div style={{ color: '#555', fontSize: 12, marginTop: 4 }}>
+                    Redirecting to dashboard...
+                  </div>
+                </>
+              ) : pollingStatus.failed || pollingStatus.timeout ? (
+                <>
+                  <div style={{ color: '#C62828', fontWeight: 'bold' }}>
+                    ✗ {pollingStatus.message}
+                  </div>
+                  <button
+                    onClick={() => setPollingStatus(null)}
+                    style={{
+                      marginTop: 8,
+                      padding: '6px 16px',
+                      background: '#FF6B35',
+                      border: 'none',
+                      borderRadius: 6,
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontWeight: 'bold',
+                      fontFamily: 'Arial'
+                    }}
+                  >
+                    Try Again
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12
+                  }}>
+                    <div style={{
+                      width: 20,
+                      height: 20,
+                      border: '3px solid #FFB800',
+                      borderTop: '3px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    <div>
+                      <div style={{ color: '#3E1F00', fontWeight: 'bold' }}>
+                        {pollingStatus.message}
+                      </div>
+                      <div style={{ color: '#888', fontSize: 11, marginTop: 2 }}>
+                        Reference: {pollingStatus.reference}
+                      </div>
+                    </div>
+                  </div>
+                  <style>
+                    {`
+                      @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                      }
+                    `}
+                  </style>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Billing History */}
           {billingHistory.length > 0 && (
@@ -550,6 +1046,18 @@ export default function SubscribePage({ token, user, onClose, dailyCount,
                         fontWeight: 'bold'
                       }}>
                         {b.plan?.toUpperCase()} — {b.months} Month(s)
+                        {b.gateway && (
+                          <span style={{
+                            fontSize: 10,
+                            color: b.gateway === 'ctechpay' ? '#2D6A4F' : '#FF6B35',
+                            marginLeft: 8,
+                            background: b.gateway === 'ctechpay' ? '#E8F5E9' : '#FFF3E0',
+                            padding: '1px 8px',
+                            borderRadius: 10
+                          }}>
+                            {b.gateway === 'ctechpay' ? 'CtechPay' : 'OneKhusa'}
+                          </span>
+                        )}
                       </div>
                       <div style={{ color: '#888', fontSize: 11 }}>
                         Ref: {b.reference_number} ·{' '}
